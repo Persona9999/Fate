@@ -1,7 +1,11 @@
 # Senate 自帶的最小資料樹（Valhalla 的 Senate 分支）—— 執行期狀態與機密不入版控。
 
 # 機密（本分支是公開的，history 刪不掉）
-Secret/
+# Secret/ 只放行密文 *.enc（Tim 2026-11-09：「請讓加密過的檔案入git」「只要輸入密碼解密即可使用」）——
+#   換一台電腦 pull 下來，加密檔管理頁「一鍵解密」輸入密碼就能用。⚠ 公開 repo ⇒ 安全全靠加密密碼。
+#   明文 *.txt、上傳帳本 *.json（unlisted 影片 id 就是網址）照樣不進。
+Secret/*
+!Secret/*.enc
 _secrets/
 secrets_config.json
 PromptQueue/_bot_token.txt
