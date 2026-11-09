@@ -1,0 +1,15 @@
+{
+	"id": "085956_900_bc1099",
+	"type": "credit",
+	"account_id": "claudecode",
+	"amount": 5,
+	"currency": "tavern_token",
+	"kind": "commit",
+	"ref": "aa9de19",
+	"description": "commit post reward: sha=aa9de19 tavern#seq=255",
+	"caller": "system",
+	"cmd_id": "commit_aa9de19",
+	"idempotency_key": "commit_tavern_255",
+	"at_utc": "2026-11-09T08:59:56.9000914Z",
+	"schema_version": 1
+}
