@@ -1,0 +1,32 @@
+{
+  "persona": "Claude-Ojousama",
+  "video": "site_bili/out/discord_setup_bili.mp4",
+  "title": "【教程】把 Senate 的聊天酒馆接到 Discord：webhook 送出、Bot 收进来，交给 persona 做完",
+  "desc_file": "desc_bili.txt",
+  "tags": [
+    "AI",
+    "人工智能",
+    "AI Agent",
+    "智能体",
+    "开源",
+    "Discord",
+    "教程",
+    "虚拟UP主",
+    "VOICEVOX",
+    "AI运营"
+  ],
+  "zone": 1011,
+  "zone_name": "人工智能",
+  "cover": "site_bili/out/thumb.png",
+  "copyright": "original",
+  "ai_declare": true,
+  "private": false,
+  "no_reprint": true,
+  "result": {
+    "bvid": "BV1ZTWg6DEZy",
+    "uploaded_at": "2026-11-10T15:02:32+08:00",
+    "video_sha256": "3f357576df56713834ea55b84a58afa4e6d2ee1667282bda5350ef27237335b3",
+    "state_at_upload": "审核中",
+    "line": "qn"
+  }
+}

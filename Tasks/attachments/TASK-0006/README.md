@@ -71,4 +71,28 @@ python -I tools/mix.py "<ffmpeg.exe>" site "$(pwd -W)/site/out/discord_setup.mp4
 | 成片 SHA-256 | `9d06cff3d8b6b5f79055d8fa9763ba7e199c39ff2c153e449183036f135ae20e` |
 | 抽格 | 26 格（片頭、每句兩格、片尾）。第一版每句句尾逐張看過，找到 7 處斷行與 1 處間距；第三版看了片頭、第 2、3、5、7、9、12 句句尾與封面，都修好了、沒有破版 |
 
-沒有上傳。要不要傳、傳到哪由 Tim 決定。
+## 發布（Tim：「然後發布影片到YT & B站吧」）
+
+### YouTube
+
+- 交付單：`python -X utf8 tools/make_slip.py <repo 外面的資料夾>` ⇒ `slip_upload.json`（路徑是佔位符）＋外面那份填好路徑的。
+  公開度 public、分類 28、章節 7 段（每段至少 10 秒 ⇒「驗證」那 9.9 秒跟「三件事」併成一段）。
+- 讀數：dry_run 檢查通過；上傳後 https://youtu.be/6AXqVg_3O68 ，回讀公開度 public、縮圖已設定；`op=list` 那一列的 Senate 欄是 Claude-Ojousama。
+
+### B 站（簡體版）
+
+- `python -I tools/make_bili.py .` ⇒ `site_bili/`（先換用語 25 組，再逐字繁轉簡，字表 87 字；轉完會掃有沒有漏的繁體）。語音與時間軸不變，只重錄、重混音。
+- 🩸 簡體字型比較寬：第 7 句在繁體版剛好兩行，簡體版把「网址」拆開；只加斷行又變成三行蓋到日文 ⇒ 這一句在簡體版改短（`make_bili.py` 的 `BREAK`）。簡體版一共錄了三輪。
+- 簡介 `desc_bili.txt`（984 字）、交付單 `slip_bilibili.json`。預演：10 個標籤都沒被拒，前後稿件數都是「已發布 30、審核中 0」。
+
+- 成片 `site_bili/out/discord_setup_bili.mp4`：138.10 秒、1280x720、10.19 MB；台詞段平均 -20.5 dB／峰值 -1.5 dB；
+  SHA-256 `3f357576df56713834ea55b84a58afa4e6d2ee1667282bda5350ef27237335b3`。抽格看了第 1、4、5、6、7、11 句句尾與封面。
+- 🩸 **投稿卡住**：不指定線路（自動測速）的那兩次都沒有輸出、不結束 —— 第一次跑了 21 分鐘，CPU 幾乎沒動、記憶體從 316 MB 長到 521 MB，
+  稿件數一直是「已發布 30、審核中 0」（Tim：「B 站投稿好像卡住了」）。停掉、讀回確認沒送進去之後逐條試 `--line`（每條 `timeout 150`）：
+  `bldsa` ⇒ 7 秒回 `network_error`（上傳主機的憑證過期）；`bda2` ⇒ 34 秒回 `network_error`（DNS 解析逾時）；**`qn` ⇒ 11 秒傳完**。`ws` 沒試。
+- 投稿後：**BV1ZTWg6DEZy**，狀態「审核中」，`private=false`，聲明「含AI生成内容」，分區人工智能；稿件數「30／1」。
+
+### 做成系列
+
+- B 站合集：`bili season create` 回 `api_error`，B 站錯誤 20082「您创建的合集个数太多了」，而 `bili season list` 是空的 ⇒ 沒有重試、沒有換方法，回報 Tim。封面已經做好：`series_cover_bili.png`（`tools/make_series_cover.py`）。
+- YouTube 播放清單：`senate cmd youtube` 的交付單有 `playlist_id`（上傳或 `op=update` 時把影片加進去），但**沒有建播放清單的 op** ⇒ 要嘛 Tim 先建好給 id，要嘛在工具裡加一支。繁體封面 `series_cover.png`。
