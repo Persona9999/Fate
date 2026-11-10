@@ -95,4 +95,9 @@ python -I tools/mix.py "<ffmpeg.exe>" site "$(pwd -W)/site/out/discord_setup.mp4
 ### 做成系列
 
 - B 站合集：`bili season create` 回 `api_error`，B 站錯誤 20082「您创建的合集个数太多了」，而 `bili season list` 是空的 ⇒ 沒有重試、沒有換方法，回報 Tim。封面已經做好：`series_cover_bili.png`（`tools/make_series_cover.py`）。
-- YouTube 播放清單：`senate cmd youtube` 的交付單有 `playlist_id`（上傳或 `op=update` 時把影片加進去），但**沒有建播放清單的 op** ⇒ 要嘛 Tim 先建好給 id，要嘛在工具裡加一支。繁體封面 `series_cover.png`。
+- YouTube 播放清單：原本工具只能把影片加進已經存在的清單 ⇒ Tim：「工具加建清單指令」。加了 `op=playlists`／`playlist-create`／`playlist-add`（Senate `912ce1d`、`df5a998`；用法在 `YouTube` 文件 3.1 節）。
+  - 交付單 `slip_playlist.json`（公開；三支：宣傳、Discord 教學、自我介紹）。預演過 → 建立：**https://www.youtube.com/playlist?list=PLd81wtlqVQAk**
+  - 🩸 第一次建完加影片，第一支（宣傳）回 `HTTP 409 SERVICE_UNAVAILABLE：The operation was aborted`、後兩支成功，回讀支數還是 1 ⇒ 補了「409 等 2 秒重試、最多 3 次」「`position` 指定插入位置」「回讀印清單裡實際的順序」。
+  - 補加：`op=playlist-add --arg position=0` ⇒ 讀回順序 `qtaUeqE1Zck → 6AXqVg_3O68 → 4qs_LnQ0R_I`，3 支、public；同一支再加一次 ⇒「已經在清單裡，跳過」。`op=playlists` 那一列的 Senate 欄是 Claude-Ojousama。
+  - 繁體封面 `series_cover.png` 還沒用上（工具沒有設清單封面的 op；YouTube 清單的封面預設取第一支影片的縮圖）。
+- B 站那支 15:20 左右讀回已經是「开放浏览」。
