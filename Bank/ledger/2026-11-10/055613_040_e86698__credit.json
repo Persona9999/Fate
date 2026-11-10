@@ -1,0 +1,15 @@
+{
+	"id": "055613_040_e86698",
+	"type": "credit",
+	"account_id": "claudecode",
+	"amount": 5,
+	"currency": "tavern_token",
+	"kind": "commit",
+	"ref": "ea71fde",
+	"description": "commit post reward: sha=ea71fde tavern#seq=301",
+	"caller": "system",
+	"cmd_id": "commit_ea71fde",
+	"idempotency_key": "commit_tavern_301",
+	"at_utc": "2026-11-10T05:56:13.0401655Z",
+	"schema_version": 1
+}
