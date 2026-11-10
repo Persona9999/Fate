@@ -97,13 +97,23 @@ python -I tools/mix.py "<ffmpeg.exe>" site_bili "$(pwd -W)/site_bili/out/senate_
 
 ## 影片介紹裡「貼給 agent 的安裝提示」（2026-11-10，Tim：面向不懂技術的使用者，不要叫人去開 Git Bash）
 
+> ⚠ **同一天改過一次做法**（Tim：「安裝提示是否可以直接放在Senate Repo下 這樣影片說明只要提示去看github中對應檔案」「例如 安裝請依照 …/README.md 說明」）：
+> 第一版把整段提示嵌在影片介紹裡（Valhalla `7306d37`，當時的正本是這個資料夾的 `agent_install_prompt*.txt`）；
+> 現在提示搬進 **Senate repo 的 README「快速開始 → 交給 AI agent 安裝」那一框**（Senate `3b47cb5`），影片介紹只指到 README。
+> 那兩個 txt 已刪。
+>
+> ⚠ **接著又改了第三版**（Tim：「給使用者保留自尊心」「不需要讓使用者複製貼上」「讓使用者貼該網址Agent就能了解該如何安裝」）：
+> README 那一框（要人整段複製、開頭是「我不懂技術」）拿掉，換成「讓 AI agent 替你安裝」——
+> 使用者只把 README 的網址交給 agent；安裝細節寫成「給負責安裝的 agent：流程與要注意的細節」六條（Senate `ea71fde`）。
+> **寫給使用者看的句子不評價對方懂不懂技術**，只說「不需要自己開終端機」。
+
 | 東西 | 位置 |
 |---|---|
-| 提示的正本 | `agent_install_prompt.txt`（繁體）、`agent_install_prompt_bili.txt`（簡體） |
-| 組進影片介紹 | `python -X utf8 tools/make_desc.py` ⇒ 寫 `slip_desc_update.json`（YouTube `op=update` 用，只有 description）、`desc_bili.txt`，並更新 `slip_upload.json` 的 description |
-| 檢查 | YouTube 說明 ≤ 5000 字元、不含角括號（YouTube 不收 ⇒ 提示裡的佔位用「Senate資料夾」這種寫法）；B 站簡介 ≤ 2000 字 |
+| 安裝細節的正本 | Senate repo `README.md`「快速開始 → 讓 AI agent 替你安裝 → 給負責安裝的 agent」那六條 |
+| 影片介紹 | `python -X utf8 tools/make_desc.py` ⇒ 寫 `slip_desc_update.json`（YouTube `op=update` 用，只有 description）、`desc_bili.txt`，並更新 `slip_upload.json` 的 description。安裝段只有一句「把網址交給你的 AI agent」和 README 的網址 |
+| 檢查 | YouTube 說明 ≤ 5000 字元、不含角括號（YouTube 不收）；B 站簡介 ≤ 2000 字 |
 
-改提示只改那兩個正本，再跑 `make_desc.py`，然後 `senate cmd youtube --arg op=update` 與 `bili upload edit <BV號> --desc-file desc_bili.txt`。
+改安裝流程 ⇒ 改 README 那一段，影片介紹不用動。介紹本身要改才跑 `make_desc.py`，然後 `senate cmd youtube --arg op=update` 與 `bili upload edit <BV號> --desc-file desc_bili.txt`。
 
 **實測**（全新的 subagent，只給提示原文；測試限定：改裝到暫存資料夾、不帶憑證 clone、`--no-path`、不跑 winget）：
 
@@ -112,6 +122,9 @@ python -I tools/mix.py "<ffmpeg.exe>" site_bili "$(pwd -W)/site_bili/out/senate_
 | 第 1 次 | 🩸 卡在 clone：測試資料夾的路徑太深（scratchpad 那一長串），巢狀子模組 `Valhalla/ChatTavern/baton/letters/Abigail` 的 pack 檔寫不進去，`Filename too long`；`-c core.longpaths=true` 重試也沒過 ⇒ 提示第 2 步補「路徑太長就刪掉沒下載完的、改到短一點的位置」 |
 | 第 2 次 | 路徑換成跟一般使用者資料夾差不多長的（`%TEMP%\sn-agent-test`）：clone 四個 repo 都拉到；`bash.exe -lc "cd '…' && ./install.sh --no-path"` exit 0；`senate.exe doctor`「通過：環境 3 項」；它對使用者說的話有講裝在哪、怎麼開始 |
 
-- 第 2 次之後又照回報補了兩句（路徑用正斜線、背景程式不用關），這兩句沒有再實測。
+| 第 3 次（第三版） | 只給「<README 網址> 請幫我安裝這個」和新版 README（當時還沒 push ⇒ 給的是本機副本）：它照「給負責安裝的 agent」那一段做，clone 四個 repo、`install.sh --no-path` exit 0、doctor「⇒ 通過：環境 3 項」；對使用者說的話有講裝在哪、下一步。之後照回報補了兩句（doctor 看最後一行、winget 裝完再量一次版本） |
+
+- 另外做過一次紙上測試（只給一行話＋網址、不准執行）：那個 agent 的抓網頁工具只回摘要、後面幾次抓到 404，沒讀到原文 ⇒ 那一次沒有量到東西。
+- 第 2 次之後照回報補的兩句（路徑用正斜線、背景程式不用關）第 3 次有帶到。
 - **沒測到的**：缺 Git／.NET 時走 winget 與 UAC 的那一段（這台兩樣都有）；不帶 `--no-path` 的正式安裝（會動 PATH，這台不能測）；真的從 PowerShell／CMD 叫 `bash.exe`（只量過「不帶 Git Bash 的環境變數時 `bash.exe -lc` 找得到 git、sed、grep、dotnet」）。
-- 讀回：YouTube 公開頁面的說明與 `slip_desc_update.json` 逐字相同（2151 字元）；B 站 `bili upload edit` 回 ok，稿件狀態「修改内容待审核…」。
+- 讀回（第三版，Tim push 之後送出）：YouTube 公開頁面的說明與 `slip_desc_update.json` 逐字相同（840 字元）；B 站 `bili upload edit` 回 ok（今天第三次改簡介），稿件狀態「修改内容待审核…」。
