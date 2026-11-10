@@ -94,3 +94,24 @@ python -I tools/mix.py "<ffmpeg.exe>" site_bili "$(pwd -W)/site_bili/out/senate_
 | 抽格 | 18 格（片頭、每句兩格、片尾）逐張看過；封面 `thumb.png` 看過 |
 | 上傳 | dry_run 檢查通過（0 項）；上傳後回讀公開度 unlisted、縮圖已設定、處理狀態 uploaded；上傳帳本 1 → 2 支 |
 | 改公開 | `op=update` 帶 `slip_public.json`；回讀公開度 public、處理狀態 processed（第 2 次讀，等了 2.5 秒）；`op=list` 也是 public |
+
+## 影片介紹裡「貼給 agent 的安裝提示」（2026-11-10，Tim：面向不懂技術的使用者，不要叫人去開 Git Bash）
+
+| 東西 | 位置 |
+|---|---|
+| 提示的正本 | `agent_install_prompt.txt`（繁體）、`agent_install_prompt_bili.txt`（簡體） |
+| 組進影片介紹 | `python -X utf8 tools/make_desc.py` ⇒ 寫 `slip_desc_update.json`（YouTube `op=update` 用，只有 description）、`desc_bili.txt`，並更新 `slip_upload.json` 的 description |
+| 檢查 | YouTube 說明 ≤ 5000 字元、不含角括號（YouTube 不收 ⇒ 提示裡的佔位用「Senate資料夾」這種寫法）；B 站簡介 ≤ 2000 字 |
+
+改提示只改那兩個正本，再跑 `make_desc.py`，然後 `senate cmd youtube --arg op=update` 與 `bili upload edit <BV號> --desc-file desc_bili.txt`。
+
+**實測**（全新的 subagent，只給提示原文；測試限定：改裝到暫存資料夾、不帶憑證 clone、`--no-path`、不跑 winget）：
+
+| 次 | 讀數 |
+|---|---|
+| 第 1 次 | 🩸 卡在 clone：測試資料夾的路徑太深（scratchpad 那一長串），巢狀子模組 `Valhalla/ChatTavern/baton/letters/Abigail` 的 pack 檔寫不進去，`Filename too long`；`-c core.longpaths=true` 重試也沒過 ⇒ 提示第 2 步補「路徑太長就刪掉沒下載完的、改到短一點的位置」 |
+| 第 2 次 | 路徑換成跟一般使用者資料夾差不多長的（`%TEMP%\sn-agent-test`）：clone 四個 repo 都拉到；`bash.exe -lc "cd '…' && ./install.sh --no-path"` exit 0；`senate.exe doctor`「通過：環境 3 項」；它對使用者說的話有講裝在哪、怎麼開始 |
+
+- 第 2 次之後又照回報補了兩句（路徑用正斜線、背景程式不用關），這兩句沒有再實測。
+- **沒測到的**：缺 Git／.NET 時走 winget 與 UAC 的那一段（這台兩樣都有）；不帶 `--no-path` 的正式安裝（會動 PATH，這台不能測）；真的從 PowerShell／CMD 叫 `bash.exe`（只量過「不帶 Git Bash 的環境變數時 `bash.exe -lc` 找得到 git、sed、grep、dotnet」）。
+- 讀回：YouTube 公開頁面的說明與 `slip_desc_update.json` 逐字相同（2151 字元）；B 站 `bili upload edit` 回 ok，稿件狀態「修改内容待审核…」。
