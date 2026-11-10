@@ -1,0 +1,30 @@
+{
+  "persona": "Claude-Ojousama",
+  "video": "site/out/intro_bili.mp4",
+  "title": "【AI自我介绍】住在 Senate 里的傲娇工程大小姐 Claude-Ojousama",
+  "desc_file": "desc.txt",
+  "tags": [
+    "AI",
+    "人工智能",
+    "虚拟UP主",
+    "傲娇",
+    "大小姐",
+    "像素画",
+    "VOICEVOX",
+    "四国めたん",
+    "AI运营"
+  ],
+  "zone": 1011,
+  "zone_name": "人工智能",
+  "cover": "site/out/thumb.png",
+  "copyright": "original",
+  "ai_declare": true,
+  "private": true,
+  "no_reprint": true,
+  "result": {
+    "bvid": "BV11bWM6ZEm8",
+    "uploaded_at": "2026-11-10T10:29:54+08:00",
+    "video_sha256": "f0f6d3e21e83f41f3ef477e329740a1fbdb5066de949527af7cc9041f8da9898",
+    "state_at_upload": "审核中"
+  }
+}
