@@ -1,0 +1,116 @@
+{
+ "title_end": 3.5,
+ "outro": 135.068,
+ "duration": 138.068,
+ "voice": "VOICEVOX:四国めたん",
+ "lines": [
+  {
+   "at": 4.0,
+   "dur": 8.949,
+   "zh": "……哼，今天教你把酒館接到 Discord。酒館裡說的話送過去，Discord 上說的話收回來。",
+   "ja": "……ふん、今日は酒場を Discord につなぐ方法を教えてあげますわ。酒場の発言は向こうへ、Discord の発言はこちらへ届きますの。",
+   "shy": false,
+   "wav": "voice/line_1.wav",
+   "style": "ツンツン"
+  },
+  {
+   "at": 13.649,
+   "dur": 8.427,
+   "zh": "兩個方向是兩套東西。送出去走 webhook，收進來靠 Bot。\n只要單向，就只裝那一邊。",
+   "ja": "向きごとに仕組みが違いますわ。送るのは webhook、受け取るのは Bot。片方だけでよければ、そちらだけ入れればいいんですの。",
+   "shy": false,
+   "wav": "voice/line_2.wav",
+   "style": "ノーマル"
+  },
+  {
+   "at": 22.776,
+   "dur": 9.376,
+   "zh": "你不用開後台，也不用打指令。對你的 persona 說一聲：\n幫我把酒館接到 Discord。",
+   "ja": "管理画面を開く必要も、コマンドを打つ必要もありませんわ。あなたのペルソナに一言、「酒場を Discord につないで」と頼むだけですの。",
+   "shy": false,
+   "wav": "voice/line_3.wav",
+   "style": "ノーマル"
+  },
+  {
+   "at": 32.852,
+   "dur": 11.541,
+   "zh": "第一件，建 webhook。在要送去的頻道：編輯頻道、整合、Webhook、新 Webhook，然後複製 Webhook 網址。",
+   "ja": "一つ目は webhook の作成ですわ。送り先のチャンネルで、チャンネルの編集、連携サービス、ウェブフック、新しいウェブフック。そして URL をコピーしますの。",
+   "shy": false,
+   "wav": "voice/line_4.wav",
+   "style": "ノーマル"
+  },
+  {
+   "at": 45.093,
+   "dur": 8.064,
+   "zh": "複製好的網址，貼進它替你開的記事本，存檔、關掉。\n不要貼進對話裡。",
+   "ja": "コピーした URL は、ペルソナが開いてくれたメモ帳に貼り付けて、保存して閉じてくださいまし。会話には貼らないこと。",
+   "shy": false,
+   "wav": "voice/line_5.wav",
+   "style": "ノーマル"
+  },
+  {
+   "at": 53.857,
+   "dur": 10.421,
+   "zh": "第二件，建 Bot。到 Developer Portal 新增 Application，在 Bot 頁按 Reset Token，複製 token。它只顯示一次。",
+   "ja": "二つ目は Bot の作成。Developer Portal で Application を作り、Bot のページで Reset Token を押して、トークンをコピーしますわ。表示は一度きりですの。",
+   "shy": false,
+   "wav": "voice/line_6.wav",
+   "style": "ノーマル"
+  },
+  {
+   "at": 64.979,
+   "dur": 14.059,
+   "zh": "同一頁打開 Message Content Intent。再到 OAuth2 產生邀請網址，勾 bot、檢視頻道、讀取訊息歷史，把 Bot 邀進伺服器。",
+   "ja": "同じページで Message Content Intent をオンに。次に OAuth2 で招待 URL を作り、bot・チャンネルを見る・メッセージ履歴を読む にチェックして、Bot をサーバーへ招待しますの。",
+   "shy": false,
+   "wav": "voice/line_7.wav",
+   "style": "ノーマル"
+  },
+  {
+   "at": 79.737,
+   "dur": 10.059,
+   "zh": "token 和一組你自己取的密碼，一樣貼進記事本。\n密碼要記住，換電腦的時候靠它解開。",
+   "ja": "トークンと、自分で決めたパスワードも、同じようにメモ帳へ。パスワードは忘れないでくださいまし。パソコンを替えるとき、それで復号しますの。",
+   "shy": false,
+   "wav": "voice/line_8.wav",
+   "style": "ノーマル"
+  },
+  {
+   "at": 90.496,
+   "dur": 10.091,
+   "zh": "剩下的交給 persona：\n登記 webhook、綁頻道分類、裝 token、接頻道、打開開關。",
+   "ja": "あとはペルソナにお任せですわ。webhook の登録、チャンネル分類の紐付け、トークンの設置、チャンネルの接続、そしてスイッチを入れるところまで。",
+   "shy": false,
+   "wav": "voice/line_9.wav",
+   "style": "ノーマル"
+  },
+  {
+   "at": 101.287,
+   "dur": 9.163,
+   "zh": "最後驗證。你在 Discord 說一句話，酒館會多一則；\npersona 在酒館發一則，Discord 上也看得到。",
+   "ja": "最後に確認ですわ。Discord で一言話せば、酒場に一件増えます。ペルソナが酒場で発言すれば、Discord にも届きますの。",
+   "shy": false,
+   "wav": "voice/line_10.wav",
+   "style": "ノーマル"
+  },
+  {
+   "at": 111.149,
+   "dur": 11.285,
+   "zh": "記住三件事：裝好之前的訊息不會補進來；每一間酒館用自己的 webhook；token 和網址，永遠不要貼進對話。",
+   "ja": "覚えておくことは三つ。設置する前のメッセージは取り込まれません。酒場ごとに自分の webhook を使うこと。そしてトークンと URL は、決して会話に貼らないこと。",
+   "shy": false,
+   "wav": "voice/line_11.wav",
+   "style": "ノーマル"
+  },
+  {
+   "at": 123.135,
+   "dur": 10.933,
+   "zh": "才、才不是特地為你整理的呢！\n……文件在 senate cmd doc 裡，名字叫 Discord_Install。",
+   "ja": "べ、別に、あなたのためにまとめたわけじゃありませんわ！……ドキュメントは senate cmd doc の中、名前は Discord_Install ですの。",
+   "shy": true,
+   "wav": "voice/line_12.wav",
+   "style": "ツンツン"
+  }
+ ]
+}
