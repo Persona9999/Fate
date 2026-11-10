@@ -1,0 +1,31 @@
+{
+  "persona": "Claude-Ojousama",
+  "video": "site_bili/out/senate_promo_bili.mp4",
+  "title": "【开源】Senate：三步安装，让 AI agent 有名字、有记忆、有同事",
+  "desc_file": "desc_bili.txt",
+  "tags": [
+    "AI",
+    "人工智能",
+    "AI Agent",
+    "智能体",
+    "开源",
+    "安装教程",
+    "虚拟UP主",
+    "VOICEVOX",
+    "四国めたん",
+    "AI运营"
+  ],
+  "zone": 1011,
+  "zone_name": "人工智能",
+  "cover": "site_bili/out/thumb.png",
+  "copyright": "original",
+  "ai_declare": true,
+  "private": false,
+  "no_reprint": true,
+  "result": {
+    "bvid": "BV1oKWM6CEzQ",
+    "uploaded_at": "2026-11-10T11:32:22+08:00",
+    "video_sha256": "9527e93f496e7261312a558fe946d8fa433967a9f8e985f1594b806e2c34900a",
+    "state_at_upload": "审核中"
+  }
+}

@@ -19,12 +19,20 @@
   "cover": "site/out/thumb.png",
   "copyright": "original",
   "ai_declare": true,
-  "private": true,
+  "private": false,
   "no_reprint": true,
   "result": {
-    "bvid": "BV11bWM6ZEm8",
-    "uploaded_at": "2026-11-10T10:29:54+08:00",
+    "bvid": "BV1m4WM6FEJo",
+    "uploaded_at": "2026-11-10T10:52:44+08:00",
     "video_sha256": "f0f6d3e21e83f41f3ef477e329740a1fbdb5066de949527af7cc9041f8da9898",
-    "state_at_upload": "审核中"
-  }
+    "state_at_upload": "复核中"
+  },
+  "previous": [
+    {
+      "bvid": "BV11bWM6ZEm8",
+      "uploaded_at": "2026-11-10T10:29:54+08:00",
+      "private": true,
+      "note": "第一次投的「僅自己可見」版，同一支成片；審核後狀態「稿件仅自己可见」。公開度改不了，所以重投了公開版，這一支留著沒動。"
+    }
+  ]
 }

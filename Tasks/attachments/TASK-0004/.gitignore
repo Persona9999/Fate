@@ -1,0 +1,10 @@
+# 產物不進 repo —— 要用時照 README 重跑（語音、錄影、成片、截圖；簡體版的動畫與頭像由 tools/make_bili.py 產生）。
+site/voice/
+site/out/
+site_bili/voice/
+site_bili/out/
+*.mp4
+*.webm
+check_*.png
+site_bili/intro.html
+site_bili/avatar.png
