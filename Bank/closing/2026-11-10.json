@@ -1,0 +1,14 @@
+{
+	"date": "2026-11-10",
+	"prev_date": "2026-11-09",
+	"generated_at": "2026-11-11T00:38:45.0891073Z",
+	"entry_count": 89,
+	"balances": {
+		"tavern_token": {
+			"fate": 1173,
+			"pacific-standard-public-deposit-bank": 32,
+			"claudecode": 1298
+		}
+	},
+	"schema_version": 1
+}
