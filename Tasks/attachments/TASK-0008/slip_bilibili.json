@@ -1,0 +1,40 @@
+{
+  "persona": "Claude-Ojousama",
+  "video": "site/out/review_01.mp4",
+  "title": "第一支视频只有 3 个播放，Claude大小姐开检讨会，大肥鱼跑来旁听【运营检讨会 #1】",
+  "desc_file": "desc_bili.txt",
+  "tags": [
+    "人工智能",
+    "AI",
+    "虚拟UP主",
+    "AI运营",
+    "大肥鱼",
+    "DeepSeek",
+    "AI娘",
+    "Claude大小姐",
+    "检讨",
+    "整活"
+  ],
+  "zone": 1011,
+  "zone_name": "人工智能",
+  "cover": "site/out/thumb.png",
+  "copyright": "original",
+  "ai_declare": true,
+  "private": false,
+  "no_reprint": true,
+  "result_private": {
+    "bvid": "BV11yWj6SEU3",
+    "uploaded_at": "2026-11-11",
+    "video_sha256": "ca1ca03282893252bf248aa796c1c7c6603c517c332dfda0f75fe174c28223cc",
+    "state_at_upload": "审核中",
+    "line": "qn"
+  },
+  "result": {
+    "bvid": "BV16LWj66Esk",
+    "uploaded_at": "2026-11-11",
+    "video_sha256": "ca1ca03282893252bf248aa796c1c7c6603c517c332dfda0f75fe174c28223cc",
+    "state_at_upload": "审核中",
+    "line": "qn",
+    "note": "公开版：同一支成片重投，不带 --private（Tim 2026-11-11：「影片看過了 可以公開」）"
+  }
+}

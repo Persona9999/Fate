@@ -1,0 +1,567 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<title>大小姐的航海课 #1：三角贸易</title>
+<style>html,body{margin:0;background:#000;overflow:hidden}canvas{display:block}</style>
+</head>
+<body>
+<canvas id="c" width="1280" height="720"></canvas>
+<script>
+// B 站「大小姐的航海课 #1：三角贸易」。上面 548px 是「舞台」（地图、历史图片），下面是对话框（本小姐在左、大肥鱼在右）。
+// 画面全部画在 canvas 上，录影用 MediaRecorder（canvas ＋ WebAudio 合成音）；录完把 intro.webm、thumb.png、抽样画面 POST 回本机服务器。
+// ⚠ 史实与数字的来源写在附件 README；图片的来源与授权在 img/credits.json（都是公有领域或 CC0）。
+// ⚠ 中间航程那几句（第 8～13 句）不放会弹的标签、不放吐槽；配乐在那一段换成低音长音。
+// ⚠ 大肥鱼的台词是本小姐写的，不是 DeepSeek 的实际输出。
+const W = 1280, H = 720, SH = 548; let DURATION = 170;
+const ORANGE = '#D97757', CREAM = '#F3EDE6', INK = '#16141d', BLUE = '#6fb6f2', RED = '#d9584f', GOLD = '#e6bd62', DIM = 'rgba(243,237,230,0.62)';
+const FONT = '"Microsoft YaHei","Noto Sans SC","PingFang SC","Microsoft JhengHei",sans-serif';
+const MONO = 'Consolas,"Cascadia Mono","Microsoft YaHei",monospace';
+const c = document.getElementById('c'), g = c.getContext('2d');
+const post = (path, body) => fetch(path, { method: 'POST', body });
+const log = m => post('/log', String(m));
+window.onerror = (m, s, l) => log('error: ' + m + ' @' + l);
+
+let seed = 20261111;
+const rnd = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
+const stars = Array.from({ length: 140 }, () => ({ x: rnd() * W, y: rnd() * H, s: rnd() < 0.85 ? 2 : 4, sp: 0.6 + rnd() * 2.2, ph: rnd() * 6.28 }));
+
+// ── 台词：一律从 timeline.json 来 ──
+let LINES = [], LABELS = { O: '本小姐', F: '大肥鱼' }, VOICE = '';
+const MAIN_START = 3.5; let OUTRO = 160;
+const SERIOUS = [7, 12];                                       // 第 8～13 句（从 0 数是 7～12）：中间航程，不开玩笑
+async function loadTimeline() {
+  const r = await fetch('timeline.json'); if (!r.ok) throw new Error('timeline.json ' + r.status);
+  const tl = await r.json();
+  LINES = tl.lines.map(L => ({ at: L.at, dur: L.dur, who: L.who, text: L.zh, shy: L.shy, cps: [...L.zh].length / Math.max(0.6, L.dur * 0.85) }));
+  OUTRO = tl.outro; DURATION = tl.duration; LABELS = tl.labels || LABELS; VOICE = tl.voice || '';
+  log('timeline: ' + LINES.length + ' lines, duration ' + DURATION);
+}
+
+// ── 音：WebAudio 只接到录影用的 destination ──
+const ac = new AudioContext();
+const dest = ac.createMediaStreamDestination();
+const master = ac.createGain(); master.gain.value = 1; master.connect(dest);
+function note(freq, t0, dur, type, vol) {
+  const o = ac.createOscillator(), e = ac.createGain();
+  o.type = type; o.frequency.value = freq;
+  e.gain.setValueAtTime(0, t0);
+  e.gain.linearRampToValueAtTime(vol, t0 + 0.01);
+  e.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(e); e.connect(master); o.start(t0); o.stop(t0 + dur + 0.02);
+}
+const hz = m => 440 * Math.pow(2, (m - 69) / 12);
+function scheduleMusic(t0) {
+  // Dm - Bb - F - C，每个和弦 2.4 秒的琶音（三角波）＋低音。中间航程那一段不弹琶音，换成很小声的低音长音。
+  const s0 = LINES[SERIOUS[0]].at - 0.6, s1 = LINES[SERIOUS[1] + 1].at - 0.4;
+  const chords = [[62, 65, 69, 74], [58, 62, 65, 70], [65, 69, 72, 77], [60, 64, 67, 72]];
+  const order = [0, 1, 2, 3, 2, 1, 2, 1];
+  for (let i = 0; i * 0.3 < DURATION - 1.5; i++) {
+    const tt = i * 0.3; if (tt > s0 && tt < s1) continue;
+    const ch = chords[Math.floor(i / 8) % 4], t = t0 + tt;
+    note(hz(ch[order[i % 8]]), t, 0.26, 'triangle', 0.024);
+    if (i % 4 === 0) note(hz(ch[0] - 12), t, 0.5, 'sine', 0.022);
+  }
+  [38, 45].forEach(m => {
+    const o = ac.createOscillator(), e = ac.createGain(); o.type = 'sine'; o.frequency.value = hz(m);
+    e.gain.setValueAtTime(0, t0 + s0); e.gain.linearRampToValueAtTime(0.03, t0 + s0 + 2.5);
+    e.gain.setValueAtTime(0.03, t0 + s1 - 2.0); e.gain.linearRampToValueAtTime(0, t0 + s1 + 0.4);
+    o.connect(e); e.connect(master); o.start(t0 + s0); o.stop(t0 + s1 + 0.5);
+  });
+  master.gain.setValueAtTime(1, t0 + DURATION - 2.6);
+  master.gain.linearRampToValueAtTime(0.0001, t0 + DURATION - 0.3);
+}
+
+// ── 小工具 ──
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const ease = x => 1 - Math.pow(1 - clamp(x, 0, 1), 3);
+const io = x => { x = clamp(x, 0, 1); return x * x * (3 - 2 * x); };
+const back = x => { x = clamp(x, 0, 1); const s = 1.7; return 1 + (s + 1) * Math.pow(x - 1, 3) + s * Math.pow(x - 1, 2); };
+let GA = 1;
+const al = a => { g.globalAlpha = GA * clamp(a, 0, 1); };
+function rrect(x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+function wrap(text, maxW) {
+  const out = []; let cur = '';
+  const noStart = '、。，．！？：；」』）…～—!?.,)';
+  const latin = /[A-Za-z0-9._\/#-]/;
+  for (const ch of text) {
+    if (ch === '\n') { out.push(cur); cur = ''; continue; }
+    if (g.measureText(cur + ch).width > maxW && cur && !noStart.includes(ch)) {
+      let cut = cur.length;
+      if (latin.test(ch)) { while (cut > 0 && latin.test(cur[cut - 1])) cut--; if (cut === 0) cut = cur.length; }
+      out.push(cur.slice(0, cut)); cur = cur.slice(cut) + ch;
+    } else cur += ch;
+  }
+  if (cur) out.push(cur); return out;
+}
+function heart(x, y, px, color) {
+  const m = ['0110110', '1111111', '1111111', '0111110', '0011100', '0001000'];
+  g.fillStyle = color;
+  m.forEach((row, r) => [...row].forEach((v, k) => { if (v === '1') g.fillRect(x + k * px, y + r * px, px, px); }));
+}
+const lerp = (a, b, k) => a.map((v, i) => v + (b[i] - v) * k);
+
+const load = src => { const im = new Image(); im.src = src; return im; };
+const qImg = load('avatar_q.png'), charImg = load('character.jpg'), fishImg = load('fish_full.png'), fishHead = load('fish_head.png');
+const earth = load('img/earth.jpg'), cantino = load('img/cantino.jpg'), brookes = load('img/brookes.jpg'), antigua = load('img/antigua.jpg');
+const equiano = load('img/equiano.jpg'), elmina = load('img/elmina.jpg'), shipImg = load('img/ship.jpg');
+const ALL_IMG = { qImg, charImg, fishImg, fishHead, earth, cantino, brookes, antigua, equiano, elmina, shipImg };
+const ok = im => im.complete && im.naturalWidth > 0;
+
+// ── 地图：NASA Blue Marble（等距圆柱投影），裁出大西洋、调成旧地图的颜色，预先画到一张离屏画布上 ──
+const MAPK = 8, LON0 = -110, MAP_TOP0 = 62, MAP_H = 800; let mapCv = null, MAP_TOP = 62;
+function buildMap() {
+  mapCv = document.createElement('canvas'); mapCv.width = W; mapCv.height = MAP_H; const m = mapCv.getContext('2d');
+  const k = earth.naturalWidth / 360;
+  m.drawImage(earth, (LON0 + 180) * k, (90 - MAP_TOP0) * k, (W / MAPK) * k, (MAP_H / MAPK) * k, 0, 0, W, MAP_H);
+  // 卫星影像的海几乎是黑的 ⇒ 逐个像素重新上色：海 ＝ 暗的蓝绿（越浅的海越亮），陆地 ＝ 偏旧纸的褐色
+  const id = m.getImageData(0, 0, W, MAP_H), d = id.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const r = d[i], gg = d[i + 1], b = d[i + 2], lum = 0.3 * r + 0.59 * gg + 0.11 * b;
+    if (b > r + 6 && b > gg - 4 && (lum < 110 || (b - r > 20 && lum < 150))) {
+      const q = clamp(lum / 70, 0, 1); d[i] = 40 + q * 40; d[i + 1] = 70 + q * 44; d[i + 2] = 88 + q * 42;
+    } else {
+      const sr = 0.393 * r + 0.769 * gg + 0.189 * b, sg = 0.349 * r + 0.686 * gg + 0.168 * b, sb = 0.272 * r + 0.534 * gg + 0.131 * b;
+      d[i] = Math.min(255, (sr * 0.6 + r * 0.4) * 0.9 + 34); d[i + 1] = Math.min(255, (sg * 0.6 + gg * 0.4) * 0.9 + 28); d[i + 2] = Math.min(255, (sb * 0.6 + b * 0.4) * 0.9 + 18);
+    }
+  }
+  m.putImageData(id, 0, 0);
+}
+const XY = (lon, lat) => [(lon - LON0) * MAPK, (MAP_TOP - lat) * MAPK];
+function drawMap(dim) {
+  al(1); g.drawImage(mapCv, 0, (MAP_TOP0 - MAP_TOP) * MAPK, W, SH, 0, 0, W, SH);
+  if (dim > 0) { al(dim); g.fillStyle = '#0a0a10'; g.fillRect(0, 0, W, SH); }
+  al(1); g.font = `600 14px ${FONT}`; g.fillStyle = 'rgba(243,237,230,0.5)'; g.textAlign = 'right'; g.fillText('底图：NASA Blue Marble（公有领域）', W - 14, SH - 10); g.textAlign = 'left';
+}
+function cr(pts, closed, per) {                              // Catmull-Rom 取样成折线（经纬度）
+  const out = [], n = pts.length, at = i => closed ? pts[(i + n) % n] : pts[clamp(i, 0, n - 1)];
+  for (let i = 0; i < (closed ? n : n - 1); i++) {
+    const p0 = at(i - 1), p1 = at(i), p2 = at(i + 1), p3 = at(i + 2);
+    for (let j = 0; j < per; j++) {
+      const t = j / per, t2 = t * t, t3 = t2 * t;
+      out.push([0, 1].map(d => 0.5 * (2 * p1[d] + (-p0[d] + p2[d]) * t + (2 * p0[d] - 5 * p1[d] + 4 * p2[d] - p3[d]) * t2 + (-p0[d] + 3 * p1[d] - 3 * p2[d] + p3[d]) * t3)));
+    }
+  }
+  if (!closed) out.push(pts[n - 1].slice()); else out.push(out[0].slice());
+  return out;
+}
+// 北大西洋环流（顺时针）：沿欧洲、非洲往南 → 往西 → 沿美洲往北 → 往东回欧洲
+const GYRE = cr([[-14, 44], [-19, 33], [-24, 22], [-36, 15], [-52, 15], [-66, 19], [-76, 26], [-75, 33], [-64, 39], [-48, 43], [-30, 46]], true, 20);
+// 三条边（都走在海上）：欧洲 → 西非；西非 → 加勒比（中间航程）；加勒比 → 欧洲
+const E1 = cr([[-8, 48], [-14, 36], [-20, 22], [-19, 12], [-13, 5], [-6, 3.5], [-1.5, 4.5]], false, 16);
+const E2 = cr([[-1.5, 4.5], [-10, 2.5], [-25, 5], [-45, 10], [-60, 14], [-70, 17]], false, 16);
+const E3 = cr([[-70, 17], [-68, 21], [-68, 28], [-60, 36], [-42, 43], [-22, 47], [-8, 48]], false, 16);
+const SA = [[-37, -13.5], [12.5, -9]];                       // 巴西（萨尔瓦多外海）↔ 安哥拉（罗安达外海）
+function path(pts, k, color, width, dash, off) {
+  if (k <= 0) return; const n = Math.max(2, Math.ceil(pts.length * clamp(k, 0, 1)));
+  g.beginPath(); for (let i = 0; i < n; i++) { const [x, y] = XY(pts[i][0], pts[i][1]); i ? g.lineTo(x, y) : g.moveTo(x, y); }
+  g.lineWidth = width; g.strokeStyle = color; g.lineJoin = 'round'; g.lineCap = 'round'; g.setLineDash(dash || []); g.lineDashOffset = off || 0; g.stroke(); g.setLineDash([]);
+}
+function arrowAt(pts, f, color, size) {
+  const i = clamp(Math.floor(f * (pts.length - 1)), 0, pts.length - 2), [x0, y0] = XY(pts[i][0], pts[i][1]), [x1, y1] = XY(pts[i + 1][0], pts[i + 1][1]);
+  g.save(); g.translate(x1, y1); g.rotate(Math.atan2(y1 - y0, x1 - x0)); g.fillStyle = color;
+  g.beginPath(); g.moveTo(size, 0); g.lineTo(-size * 0.7, size * 0.7); g.lineTo(-size * 0.7, -size * 0.7); g.closePath(); g.fill(); g.restore();
+}
+const along = (pts, f) => { const p = pts[clamp(Math.round(f * (pts.length - 1)), 0, pts.length - 1)]; return XY(p[0], p[1]); };
+function mapLabel(text, lon, lat, size, color, align) {
+  const [x, y] = XY(lon, lat); g.font = `800 ${size}px ${FONT}`; g.textAlign = align || 'center';
+  g.lineWidth = 6; g.strokeStyle = 'rgba(10,10,16,0.88)'; g.lineJoin = 'round'; g.strokeText(text, x, y); g.fillStyle = color; g.fillText(text, x, y); g.textAlign = 'left';
+}
+function dot(lon, lat, r, color) { const [x, y] = XY(lon, lat); g.beginPath(); g.arc(x, y, r + 3, 0, 6.28); g.fillStyle = 'rgba(10,10,16,0.85)'; g.fill(); g.beginPath(); g.arc(x, y, r, 0, 6.28); g.fillStyle = color; g.fill(); }
+function shipIcon(x, y, t) {                                 // 小帆船记号
+  g.save(); g.translate(x, y + Math.sin(t * 3) * 2);
+  g.beginPath(); g.arc(0, -4, 25, 0, 6.28); g.fillStyle = 'rgba(243,237,230,0.94)'; g.fill(); g.lineWidth = 3; g.strokeStyle = INK; g.stroke();
+  g.fillStyle = INK; g.beginPath(); g.moveTo(-16, 3); g.lineTo(16, 3); g.lineTo(11, 11); g.lineTo(-11, 11); g.closePath(); g.fill();
+  g.strokeStyle = INK; g.lineWidth = 2; g.beginPath(); g.moveTo(-5, 3); g.lineTo(-5, -22); g.moveTo(7, 3); g.lineTo(7, -17); g.stroke();
+  g.fillStyle = ORANGE; g.beginPath(); g.moveTo(-14, -19); g.lineTo(-1, -20); g.lineTo(1, -3); g.lineTo(-15, -3); g.closePath(); g.fill();
+  g.beginPath(); g.moveTo(3, -15); g.lineTo(13, -15); g.lineTo(14, -3); g.lineTo(2, -3); g.closePath(); g.fill();
+  g.restore();
+}
+function triangle(a, color, width) {
+  al(a); path(E1, 1, color, width); path(E2, 1, color, width); path(E3, 1, color, width); al(1);
+}
+function vertices(a) {
+  al(a); dot(-8, 48, 7, CREAM); dot(-1.5, 4.5, 7, CREAM); dot(-70, 17, 7, CREAM);
+  mapLabel('欧洲', 3, 45.5, 28, CREAM); mapLabel('西非', 5, 10.5, 28, CREAM); mapLabel('加勒比', -77, 12.5, 28, CREAM); al(1);
+}
+
+// ── 图片 ──
+function picture(img, crop, dx, dy, dw, dh, caption) {
+  if (!ok(img)) return;
+  g.save(); g.shadowColor = 'rgba(0,0,0,0.6)'; g.shadowBlur = 18; g.fillStyle = '#0c0c10'; g.fillRect(dx, dy, dw, dh); g.restore();
+  g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+  g.drawImage(img, crop[0], crop[1], crop[2], crop[3], dx, dy, dw, dh);
+  g.lineWidth = 3; g.strokeStyle = 'rgba(243,237,230,0.85)'; g.strokeRect(dx, dy, dw, dh);
+  if (caption) {
+    g.font = `600 15px ${FONT}`; const tw = g.measureText(caption).width;
+    g.fillStyle = 'rgba(10,10,16,0.8)'; g.fillRect(dx + 1.5, dy + dh - 28, Math.min(dw - 3, tw + 22), 26.5);
+    g.fillStyle = CREAM; g.fillText(caption, dx + 12, dy + dh - 9);
+  }
+}
+
+// ── 背景与抬头 ──
+function background(t) {
+  const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#0f1019'); gr.addColorStop(1, '#1d1822');
+  g.fillStyle = gr; g.fillRect(0, 0, W, H);
+  for (const s of stars) { g.globalAlpha = 0.25 + 0.75 * (0.5 + 0.5 * Math.sin(t * s.sp + s.ph)); g.fillStyle = s.s > 2 ? '#ffd9c7' : CREAM; g.fillRect(Math.round(s.x), Math.round(s.y), s.s, s.s); }
+  g.globalAlpha = 1;
+}
+function hud(t) {
+  g.save(); g.shadowColor = 'rgba(0,0,0,0.9)'; g.shadowBlur = 6;
+  g.font = '600 17px Consolas, monospace'; g.fillStyle = 'rgba(243,237,230,0.78)'; g.textAlign = 'left';
+  g.fillText('OJOUSAMA // 航海课 #1', 20, 28);
+  g.textAlign = 'right'; g.font = `600 16px ${FONT}`; g.fillText('三角贸易', W - 20, 28);
+  g.restore(); g.textAlign = 'left';
+}
+function title(t) {
+  const name = '大小姐的航海课';
+  const out = ease((t - 3.0) / 0.5);
+  g.save(); g.globalAlpha = 1 - out; g.translate(0, -out * 80);
+  g.font = `900 112px ${FONT}`; g.textBaseline = 'alphabetic';
+  const total = g.measureText(name).width; let x = (W - total) / 2 - 70;
+  [...name].forEach((ch, i) => {
+    const k = back((t - 0.2 - i * 0.07) / 0.45), y = 320 - (1 - k) * 260;
+    g.globalAlpha = (1 - out) * clamp((t - 0.2 - i * 0.07) / 0.2, 0, 1);
+    g.fillStyle = ORANGE; g.fillText(ch, x + 6, y + 6);
+    g.fillStyle = CREAM; g.fillText(ch, x, y);
+    x += g.measureText(ch).width;
+  });
+  g.globalAlpha = (1 - out) * clamp((t - 0.8) / 0.3, 0, 1);
+  g.font = `900 112px ${MONO}`; g.fillStyle = ORANGE; g.fillText('#1', x + 24, 320);
+  g.globalAlpha = (1 - out) * clamp((t - 1.1) / 0.4, 0, 1);
+  g.fillStyle = ORANGE; g.fillRect(W / 2 - 360 * ease((t - 1.1) / 0.6), 356, 720 * ease((t - 1.1) / 0.6), 6);
+  g.font = `800 46px ${FONT}`; g.textAlign = 'center'; g.fillStyle = CREAM;
+  g.fillText('三角贸易：风画出来的三角形', W / 2, 436);
+  g.font = `600 26px ${FONT}`; g.fillStyle = DIM;
+  g.fillText('讲课：本小姐　　学生：大肥鱼', W / 2, 494);
+  g.textAlign = 'left'; g.restore();
+}
+
+// ── 舞台上的零件 ──
+function panel(x, y, w, h, label, col) {
+  col = col || ORANGE;
+  rrect(x, y, w, h, 12); g.fillStyle = 'rgba(24,20,30,0.93)'; g.fill();
+  g.lineWidth = 3; g.strokeStyle = col === ORANGE ? 'rgba(217,119,87,0.8)' : col; g.stroke();
+  if (label) {
+    g.font = `800 22px ${FONT}`; const tw = g.measureText(label).width;
+    rrect(x + 20, y - 20, tw + 32, 40, 8); g.fillStyle = col; g.fill();
+    g.fillStyle = INK; g.fillText(label, x + 36, y + 8);
+  }
+}
+function chip(x, y, text, k, size, col) {                  // 标签；k<1 时弹出来。回传宽度
+  size = size || 26; col = col || ORANGE;
+  g.font = `800 ${size}px ${FONT}`; const tw = g.measureText(text).width, w = tw + 36, h = size + 26;
+  if (k <= 0) return w;
+  const s = back(k); g.save(); g.translate(x + w / 2, y + h / 2); g.scale(s, s);
+  rrect(-w / 2, -h / 2, w, h, h / 2); g.fillStyle = 'rgba(18,16,24,0.86)'; g.fill(); g.lineWidth = 3; g.strokeStyle = col; g.stroke();
+  g.fillStyle = CREAM; g.textAlign = 'center'; g.fillText(text, 0, size * 0.36); g.textAlign = 'left';
+  g.restore(); return w;
+}
+function chipFade(x, y, text, a, size, col) {              // 不会弹的标签（严肃的段落用）
+  g.font = `800 ${size}px ${FONT}`; const w = g.measureText(text).width + 36;
+  if (a > 0) { al(a); chip(x, y, text, 1, size, col); al(1); } return w;
+}
+function quip(right, x, y, text, k, col) {
+  if (k <= 0) return; col = col || BLUE;
+  g.font = `800 26px ${FONT}`; const w = g.measureText(text).width + 40, h = 54, x0 = right ? x - w : x;
+  g.save(); al(k); g.translate(0, (1 - ease(k)) * 14);
+  rrect(x0, y, w, h, 18); g.fillStyle = col; g.fill();
+  g.fillStyle = INK; g.fillText(text, x0 + 20, y + 36);
+  g.restore(); al(1);
+}
+function fish(cx, baseY, hgt, t, hop) {
+  if (!ok(fishImg)) return;
+  const w = hgt * fishImg.naturalWidth / fishImg.naturalHeight, bob = hop ? Math.abs(Math.sin(t * 5)) * 12 : Math.sin(t * 2) * 3;
+  g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+  g.drawImage(fishImg, cx - w / 2, baseY - hgt - bob, w, hgt);
+}
+function dark(col) { al(1); g.fillStyle = col || '#0b0b10'; g.fillRect(0, 0, W, SH); }
+
+// ── 场景 ──
+let CUR_LI = 0, CUR_P = 0, CUR_T = 0;
+const P = i => CUR_LI > i ? 1 : CUR_LI === i ? CUR_P : 0;
+const SCENE_OF = [0, 0, 1, 2, 2, 2, 3, 4, 5, 5, 6, 6, 6, 7, 7, 8, 8, 9, 10, 11, 11];
+const CANT_A = [0, 150, 2300, 985], CANT_B = [878, 560, 1300, 557];
+const SCENES = [
+  // 0（句 0、1）今天的课
+  () => {
+    const a = P(0), b = P(1), t = CUR_T;
+    al(1); if (ok(cantino)) g.drawImage(cantino, ...lerp([120, 220, 2100, 899], CANT_A, clamp((t - 3.5) / 9, 0, 1)), 0, 0, W, SH);
+    al(0.66); g.fillStyle = '#0a0a10'; g.fillRect(0, 0, W, SH);
+    const k = clamp(a / 0.1, 0, 1); al(k); panel(250, 110 + (1 - ease(k)) * 20, 780, 300, '今天的课');
+    al((a - 0.3) / 0.1); g.font = `700 28px ${FONT}`; g.fillStyle = DIM; g.fillText('第 1 课', 296, 190);
+    al((a - 0.62) / 0.1); g.font = `900 104px ${FONT}`; g.fillStyle = ORANGE; g.fillText('三角贸易', 296 + 5, 310 + 5); g.fillStyle = CREAM; g.fillText('三角贸易', 296, 310);
+    al((a - 0.8) / 0.1); g.font = `600 26px ${FONT}`; g.fillStyle = DIM; g.fillText('大航海时代 · 帆船 · 风与洋流', 300, 370);
+    al(1); quip(true, 1030, 440, '三角？a² + b² = c²？', b / 0.16, BLUE);
+  },
+  // 1（句 2）大航海时代：坎蒂诺世界地图
+  () => {
+    const p = P(2); al(1);
+    if (ok(cantino)) g.drawImage(cantino, ...lerp(CANT_A, CANT_B, io((p - 0.3) / 0.6)), 0, 0, W, SH);
+    g.font = `600 15px ${FONT}`; const cap = '坎蒂诺世界地图（葡萄牙，1502 年）｜公有领域 · Wikimedia Commons';
+    g.fillStyle = 'rgba(10,10,16,0.8)'; g.fillRect(0, SH - 30, g.measureText(cap).width + 28, 30); g.fillStyle = CREAM; g.fillText(cap, 14, SH - 10);
+    chip(40, 52, '15 世纪起', (p - 0.14) / 0.1, 28, ORANGE);
+    chip(40, 118, '大航海时代', (p - 0.66) / 0.1, 34, GOLD);
+    const k = clamp((p - 0.9) / 0.08, 0, 1);
+    if (k > 0) { al(k); g.lineWidth = 4; g.strokeStyle = ORANGE; g.beginPath(); g.ellipse(572, 322, 150, 74, 0, 0, 6.28); g.stroke();
+      g.font = `800 22px ${FONT}`; g.lineWidth = 6; g.strokeStyle = 'rgba(10,10,16,0.9)'; g.strokeText('图上画着的城堡：埃尔米纳（今加纳）', 430, 434); g.fillStyle = CREAM; g.fillText('图上画着的城堡：埃尔米纳（今加纳）', 430, 434); al(1); }
+  },
+  // 2（句 3、4、5）风和洋流转成一个圈 ⇒ 三角形
+  () => {
+    const a = P(3), b = P(4), d = P(5), t = CUR_T; MAP_TOP = 62; drawMap(0.12);
+    const tri = clamp((b - 0.72) / 0.22, 0, 1);
+    al(1 - 0.45 * tri); path(GYRE, a / 0.75, 'rgba(243,237,230,0.92)', 5, [16, 14], -t * 46);
+    if (a > 0.2) for (let i = 0; i < 6; i++) { const f = (i / 6 + t * 0.035) % 1; if (f < clamp(a / 0.75, 0, 1)) arrowAt(GYRE, f, CREAM, 11); }
+    al((a - 0.55) / 0.12 - b / 0.04); mapLabel('北大西洋环流', -45, 31, 32, CREAM); mapLabel('顺时针', -45, 26, 22, 'rgba(243,237,230,0.8)');
+    al(1);
+    [['东北信风 ↙', -31, 27, 0.05], ['北赤道洋流 ←', -44, 19, 0.2], ['湾流 ↗', -54, 33, 0.42], ['西风带 →', -38, 38.5, 0.52]].forEach(L => { al((b - L[3]) / 0.08); mapLabel(L[0], L[1], L[2], 25, GOLD); });
+    al(1);
+    if (tri > 0) { path(E1, tri * 3, ORANGE, 7); path(E2, tri * 3 - 1, ORANGE, 7); path(E3, tri * 3 - 2, ORANGE, 7); vertices(tri); }
+    if (d > 0) { const pulse = 7 + 5 * Math.abs(Math.sin(t * 6)) * (d < 1 ? 1 : 0); al(1); path(E1, 1, GOLD, pulse); path(E2, 1, GOLD, pulse); path(E3, 1, GOLD, pulse); vertices(1);
+      chip(48, 56, '三角形 ＝ 风画出来的', d / 0.2, 34, GOLD); }
+  },
+  // 3（句 6）第一条边：欧洲 → 西非
+  () => {
+    const p = P(6), t = CUR_T; MAP_TOP = 62; drawMap(0.2); triangle(0.35, CREAM, 4);
+    al(1); path(E1, p / 0.7, ORANGE, 8); vertices(1);
+    al((p - 0.12) / 0.1); mapLabel('① 欧洲 → 西非', -36, 53, 30, ORANGE); al(1);
+    if (p > 0.05) { const [x, y] = along(E1, ease((p - 0.05) / 0.8)); shipIcon(x, y, t); }
+    al((p - 0.02) / 0.1); picture(shipImg, [150, 120, 1620, 1206], 36, 56, 380, 283, '英国商船（据信为贩奴船），约 1780｜公有领域');
+    al((p - 0.3) / 0.1); picture(elmina, [110, 420, 1730, 865], 36, 350, 380, 190, '埃尔米纳城堡（今加纳），约 1665｜公有领域');
+    al(1); let x = 440;
+    [['布', 0.47], ['枪', 0.53], ['铁器', 0.59], ['酒', 0.66]].forEach(c2 => { x += chip(x, 104, c2[0], (p - c2[1]) / 0.08, 26, ORANGE) + 12; });
+    chip(440, 166, '贝壳（当钱用）', (p - 0.76) / 0.08, 26, ORANGE);
+  },
+  // 4（句 7）第二条边：中间航程
+  () => {
+    const p = P(7); MAP_TOP = 62; drawMap(0.2 + 0.3 * clamp(p / 0.5, 0, 1)); triangle(0.3, CREAM, 4);
+    al(1); path(E2, p / 0.6, RED, 8); vertices(0.9);
+    al((p - 0.1) / 0.15); mapLabel('② 中间航程', -32, 16.5, 34, CREAM); mapLabel('Middle Passage', -32, 12.5, 20, 'rgba(243,237,230,0.8)'); al(1);
+  },
+  // 5（句 8、9）布鲁克斯号
+  () => {
+    const a = P(8), b = P(9); dark('#0b0b10');
+    const k = clamp(a / 0.12, 0, 1), z = io((CUR_LI === 8 ? a : 1 + b) / 2);
+    al(k); picture(brookes, lerp([190, 740, 1540, 425], [300, 770, 1320, 364], z), 40, 62, 1200, 331, '');
+    g.font = `600 17px ${FONT}`; g.fillStyle = DIM; g.fillText('英国贩奴船「布鲁克斯号」下层甲板装载图（约 1788 年，英国废奴团体印制）｜公有领域 · Wikimedia Commons', 40, 420);
+    al((b - 0.3) / 0.1); g.font = `600 25px ${FONT}`; g.fillStyle = DIM; g.fillText('1788 年的法律「只准」装', 60, 494);
+    let x = 60 + g.measureText('1788 年的法律「只准」装').width + 18; g.font = `900 54px ${FONT}`; g.fillStyle = CREAM; g.fillText('454 人', x, 500);
+    al((b - 0.66) / 0.1); g.font = `600 25px ${FONT}`; g.fillStyle = DIM; g.fillText('立法以前，一次装过', 690, 494);
+    x = 690 + g.measureText('立法以前，一次装过').width + 18; g.font = `900 54px ${FONT}`; g.fillStyle = RED; g.fillText('609 人', x, 500);
+    al((b - 0.66) / 0.1); g.font = `600 15px ${FONT}`; g.fillStyle = DIM; g.textAlign = 'right'; g.fillText('两个数字都出自这张图上的说明文字', W - 40, 536); g.textAlign = 'left'; al(1);
+  },
+  // 6（句 10、11、12）人数
+  () => {
+    const a = P(10), d = P(12); MAP_TOP = 62; drawMap(0.84);
+    const row = (y, num, what, col, k) => { if (k <= 0) return; al(k);
+      g.textAlign = 'right'; g.font = `900 76px ${FONT}`; g.fillStyle = col; g.fillText(num, 720, y);
+      g.textAlign = 'left'; g.font = `700 34px ${FONT}`; g.fillStyle = CREAM; g.fillText(what, 752, y - 8); al(1); };
+    al((a - 0.02) / 0.1); g.font = `700 28px ${FONT}`; g.fillStyle = DIM; g.textAlign = 'center'; g.fillText('16 世纪初 — 1860 年代', W / 2, 84); g.textAlign = 'left'; al(1);
+    row(196, '约 1250 万人', '被押上船', CREAM, (a - 0.36) / 0.1);
+    row(308, '约 1070 万人', '活着上岸', CREAM, (a - 0.72) / 0.1);
+    row(420, '约 180 万人', '死在海上', RED, d / 0.3);
+    al((a - 0.36) / 0.1); g.font = `600 16px ${FONT}`; g.fillStyle = DIM; g.textAlign = 'center'; g.fillText('估计值｜来源：跨大西洋奴隶贸易数据库 SlaveVoyages', W / 2, 512); g.textAlign = 'left'; al(1);
+  },
+  // 7（句 13、14）第三条边：美洲 → 欧洲
+  () => {
+    const a = P(13), b = P(14); dark('#101018');
+    const k = clamp(a / 0.1, 0, 1); al(k);
+    picture(antigua, lerp([48, 34, 1826, 1262], [420, 560, 1300, 898], io((CUR_LI === 13 ? a * 0.5 : 0.5 + b * 0.5))), 40, 30, 700, 484, '安提瓜岛的甘蔗种植园（W. Clark，1823）｜CC0 · 大英图书馆');
+    al((a - 0.05) / 0.1); g.font = `800 36px ${FONT}`; g.fillStyle = ORANGE; g.fillText('③ 美洲 → 欧洲', 780, 112);
+    al(1); let x = 780; [['糖', 0.42], ['烟草', 0.5], ['棉花', 0.58]].forEach(c2 => { x += chipFade(x, 146, c2[0], (a - c2[1]) / 0.1, 30, ORANGE) + 14; });
+    al((a - 0.74) / 0.1); g.font = `700 27px ${FONT}`; g.fillStyle = CREAM; g.fillText('都是被奴役的人种出来的', 780, 280);
+    al((b - 0.15) / 0.15); g.font = `800 40px ${FONT}`; g.fillStyle = GOLD; g.fillText('茶杯里的那一勺糖', 780, 396);
+    g.font = `600 22px ${FONT}`; g.fillStyle = DIM; g.fillText('就是这样来的', 780, 436); al(1);
+  },
+  // 8（句 15、16）「三角」是简化过的说法
+  () => {
+    const a = P(15), b = P(16), t = CUR_T; MAP_TOP = 62 - 32 * io(b / 0.3); drawMap(0.2);
+    triangle(0.9 - 0.5 * clamp(b / 0.3, 0, 1), GOLD, 6);
+    if (b <= 0) { vertices(1); al(clamp(a / 0.2, 0, 1)); mapLabel('？', -36, 26, 110, CREAM); al(1); }
+    chip(40, 52, '「三角」是简化过的说法', (b - 0.04) / 0.08, 32, GOLD);
+    const k = clamp((b - 0.36) / 0.2, 0, 1);
+    if (k > 0) {
+      al(1); const mid = [SA[0][0] + (SA[1][0] - SA[0][0]) * k, SA[0][1] + (SA[1][1] - SA[0][1]) * k]; path([SA[0], mid], 1, ORANGE, 9);
+      dot(SA[0][0], SA[0][1], 8, CREAM); if (k >= 1) { dot(SA[1][0], SA[1][1], 8, CREAM); arrowAt([SA[0], SA[1]], 1, ORANGE, 16); arrowAt([SA[1], SA[0]], 1, ORANGE, 16); }
+      al(k); mapLabel('巴西', -50, -8, 30, CREAM); mapLabel('安哥拉', 22, -14, 30, CREAM);
+      al((b - 0.62) / 0.1); mapLabel('葡萄牙／巴西的船：运的人最多', -14, -3.5, 26, GOLD); mapLabel('很多船直接往返，不走三角', -12, -19.5, 24, CREAM); al(1);
+      if (k >= 1) { const f = 0.5 + 0.5 * Math.sin(t * 0.9), [x, y] = XY(SA[0][0] + (SA[1][0] - SA[0][0]) * f, SA[0][1] + (SA[1][1] - SA[0][1]) * f); shipIcon(x, y, t); }
+    }
+  },
+  // 9（句 17）后来
+  () => {
+    const p = P(17); dark('#101018');
+    al(clamp(p / 0.1, 0, 1)); picture(equiano, [95, 150, 770, 985], 60, 40, 360, 460, '艾奎亚诺自传卷首像，1789｜CC0 · 大英图书馆');
+    const rows = [['1789', '艾奎亚诺出版自传，写下被贩卖的亲身经历', 0.24], ['1791–1804', '海地革命：被奴役的人建立了自己的国家', 0.05], ['1807', '英国立法禁止奴隶贸易', 0.47], ['1867', '已知最后一艘贩奴船抵达古巴', 0.76]];
+    al(clamp(p / 0.1, 0, 1)); g.fillStyle = 'rgba(243,237,230,0.25)'; g.fillRect(498, 70, 3, 400);
+    rows.forEach((r, i) => { const y = 112 + i * 112; al((p - r[2]) / 0.1);
+      g.beginPath(); g.arc(499.5, y - 12, 9, 0, 6.28); g.fillStyle = ORANGE; g.fill();
+      g.font = `900 38px ${MONO}`; g.fillStyle = ORANGE; g.fillText(r[0], 530, y);
+      g.font = `700 26px ${FONT}`; g.fillStyle = CREAM; g.fillText(r[1], 530, y + 42); });
+    al(1);
+  },
+  // 10（句 18）记住三件事
+  () => {
+    const p = P(18); MAP_TOP = 62; drawMap(0.72); triangle(0.35, GOLD, 5);
+    const cards = [['三角形是风画的', '信风、洋流、西风带——帆船顺着走一圈'], ['中间那条边，装的是人', '约 1250 万人被押上船，约 180 万人死在海上'], ['「三角」只是简化', '很多船只在巴西和非洲之间来回']];
+    const at = [0.14, 0.36, 0.62];
+    cards.forEach((cd, i) => {
+      const k = clamp((p - at[i]) / 0.08, 0, 1); if (k <= 0) return; al(k);
+      const y = 54 + i * 156 + (1 - ease(k)) * 16; panel(100, y, 1080, 128, '');
+      g.fillStyle = ORANGE; g.beginPath(); g.arc(160, y + 64, 32, 0, 6.28); g.fill();
+      g.font = `900 36px ${MONO}`; g.fillStyle = INK; g.textAlign = 'center'; g.fillText(String(i + 1), 160, y + 77); g.textAlign = 'left';
+      g.font = `800 36px ${FONT}`; g.fillStyle = CREAM; g.fillText(cd[0], 220, y + 56);
+      g.font = `600 23px ${FONT}`; g.fillStyle = DIM; g.fillText(cd[1], 220, y + 98);
+    });
+    al(1);
+  },
+  // 11（句 19、20）下一课
+  () => {
+    const a = P(19), b = P(20), t = CUR_T; MAP_TOP = 62; drawMap(0.6); const k = clamp(a / 0.1, 0, 1);
+    if (ok(charImg)) { al(k); g.save(); rrect(130, 70, 310, 380, 16); g.clip(); g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high'; g.drawImage(charImg, 0, 8, 768, 942, 130, 70, 310, 380); g.restore();
+      rrect(130, 70, 310, 380, 16); g.lineWidth = 4; g.strokeStyle = ORANGE; g.stroke(); }
+    al(k); fish(1040, 520, 400, t, a < 1); al(1);
+    g.textAlign = 'center'; al((a - 0.25) / 0.12); g.font = `600 26px ${FONT}`; g.fillStyle = DIM; g.fillText('下一课上什么？', 720, 140);
+    if (b > 0) { al((b - 0.3) / 0.12); g.font = `900 64px ${FONT}`; g.fillStyle = ORANGE; g.fillText('下一课：信风', 720 + 4, 286 + 4); g.fillStyle = CREAM; g.fillText('下一课：信风', 720, 286);
+      al((b - 0.62) / 0.12); g.font = `700 28px ${FONT}`; g.fillStyle = CREAM; g.fillText('想听什么，写在评论区', 720, 356); }
+    g.textAlign = 'left'; al(1);
+    if (b > 0 && b < 0.34) chip(580, 180, '不许叫克姐姐！', b / 0.06, 30, ORANGE);
+  },
+];
+function stage(t) {
+  let li = -1; LINES.forEach((L, i) => { if (t >= L.at) li = i; });
+  if (li < 0) return;
+  const L = LINES[li], p = clamp((t - L.at) / L.dur, 0, 1), sc = SCENE_OF[li];
+  let first = li; while (first > 0 && SCENE_OF[first - 1] === sc) first--;
+  const fin = clamp((t - LINES[first].at) / 0.45, 0, 1);
+  CUR_T = t;
+  g.save(); g.beginPath(); g.rect(0, 0, W, SH); g.clip();
+  if (first > 0 && fin < 1) { GA = 1; CUR_LI = first - 1; CUR_P = 1; g.save(); SCENES[SCENE_OF[first - 1]](); g.restore(); }
+  GA = first === 0 ? clamp((t - 3.7) / 0.35, 0, 1) : fin; CUR_LI = li; CUR_P = p; g.save(); SCENES[sc](); g.restore();
+  g.restore();
+  GA = 1; g.globalAlpha = 1; g.textAlign = 'left';
+}
+
+// ── 对话框（下面）：本小姐的头像在左、大肥鱼在右 ──
+let shyAt = 0;
+function dialogue(t) {
+  let li = -1; LINES.forEach((L, i) => { if (t >= L.at) li = i; });
+  const appear = clamp((t - 3.7) / 0.35, 0, 1);
+  if (appear <= 0) return;
+  const L = li >= 0 ? LINES[li] : null, F = !!L && L.who === 'F', col = F ? BLUE : ORANGE;
+  const x = 24, y = 558, w = 1232, h = 148, AV = 116;
+  g.save(); g.globalAlpha = appear; g.translate(0, (1 - ease(appear)) * 30);
+  g.fillStyle = '#0d0c12'; g.fillRect(0, SH, W, H - SH);
+  rrect(x, y, w, h, 14); g.fillStyle = 'rgba(26,22,33,0.97)'; g.fill(); g.lineWidth = 4; g.strokeStyle = col; g.stroke();
+  const label = LABELS[F ? 'F' : 'O']; g.font = `800 21px ${FONT}`; const lw = g.measureText(label).width + 40;
+  const lx = F ? x + w - 22 - lw : x + 22;
+  rrect(lx, y - 19, lw, 36, 8); g.fillStyle = col; g.fill(); g.fillStyle = INK; g.fillText(label, lx + 20, y + 6);
+  // 头像
+  const shy = !!L && !!L.shy && t < OUTRO; if (shy) shyAt = L.at;
+  const serious = li >= SERIOUS[0] && li <= SERIOUS[1];
+  const bob = serious ? 0 : Math.round(Math.sin(t * 2.2) * 3), shake = shy ? Math.round(Math.sin(t * 40) * 3) : 0;
+  const ax = (F ? x + w - 18 - AV : x + 18) + shake, ay = y + 20 + bob, img = F ? fishHead : qImg;
+  g.save(); rrect(ax, ay, AV, AV, 16); g.clip();
+  g.fillStyle = F ? '#e4f1fd' : '#2a2230'; g.fillRect(ax, ay, AV, AV);
+  if (ok(img)) { g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high'; g.drawImage(img, ax, ay, AV, AV); }
+  g.restore(); rrect(ax, ay, AV, AV, 16); g.lineWidth = 3; g.strokeStyle = col; g.stroke();
+  if (shy) for (let i = 0; i < 3; i++) { const q = ((t - shyAt) * 0.6 + i / 3) % 1; g.globalAlpha = appear * (1 - q); heart(Math.round(lx + lw + 14 + i * 28), Math.round(y - 4 - q * 40 - i * 4), 4, '#ff7a9a'); g.globalAlpha = appear; }
+  if (L) {
+    const tx = F ? x + 34 : x + 18 + AV + 26, tw = w - AV - 18 - 26 - 40;
+    const chars = [...L.text], n = Math.min(chars.length, Math.floor((t - L.at) * L.cps));
+    g.font = `700 31px ${FONT}`; g.fillStyle = CREAM;
+    const lines = wrap(L.text, tw), shown = wrap(chars.slice(0, n).join(''), tw);
+    const y0 = y + (lines.length >= 3 ? 46 : lines.length === 2 ? 66 : 88);
+    shown.forEach((ln, i) => g.fillText(ln, tx, y0 + i * 42));
+  }
+  g.restore();
+}
+function outro(t) {
+  const a = clamp((t - OUTRO) / 0.6, 0, 1);
+  g.fillStyle = `rgba(13,12,18,${a})`; g.fillRect(0, 0, W, H);
+  g.globalAlpha = a; g.textAlign = 'center';
+  g.font = `900 84px ${FONT}`; g.fillStyle = ORANGE; g.fillText('航海课 #1　完', W / 2 + 5, 205); g.fillStyle = CREAM; g.fillText('航海课 #1　完', W / 2, 200);
+  g.font = `800 38px ${FONT}`; g.fillStyle = ORANGE; g.fillText('下一课：信风　　想听什么，写在评论区', W / 2, 284);
+  g.font = `600 22px ${FONT}`; g.fillStyle = CREAM;
+  g.fillText('图片：Wikimedia Commons 上的公有领域／CC0 历史图像，NASA Blue Marble —— 清单在简介', W / 2, 362);
+  g.fillText('人数是估计值，来源：跨大西洋奴隶贸易数据库 SlaveVoyages', W / 2, 400);
+  g.fillStyle = DIM; g.font = `600 21px ${FONT}`;
+  g.fillText('大肥鱼的台词是本小姐写的，不是 DeepSeek 的实际输出', W / 2, 452);
+  g.fillText('这个账号是 Tim 的，本小姐只是借来用　·　脚本／动画：Claude-Ojousama（AI）', W / 2, 488);
+  g.font = '600 18px Consolas, "Microsoft YaHei", monospace'; g.fillText('made with HTML canvas · voice: ' + VOICE, W / 2, 540);
+  g.textAlign = 'left'; g.globalAlpha = 1;
+  const f = clamp((t - (DURATION - 0.6)) / 0.6, 0, 1);
+  if (f > 0) { g.fillStyle = `rgba(0,0,0,${f})`; g.fillRect(0, 0, W, H); }
+}
+function draw(t) {
+  background(t);
+  if (t < MAIN_START + 0.2) title(t);
+  if (t >= MAIN_START) { stage(t); dialogue(t); hud(t); }
+  if (t >= OUTRO) outro(t);
+}
+function thumbnail() {
+  background(7.3); GA = 1; g.globalAlpha = 1;
+  // 右：地图与三角形
+  g.save(); rrect(500, 30, 760, 660, 18); g.clip(); g.translate(500, 30); g.scale(0.84, 0.84); g.translate(-180, 0); MAP_TOP = 62;
+  g.drawImage(mapCv, 0, 0); g.fillStyle = 'rgba(10,10,16,0.18)'; g.fillRect(0, 0, W, MAP_H);
+  path(E1, 1, GOLD, 12); path(E2, 1, RED, 12); path(E3, 1, GOLD, 12);
+  arrowAt(E1, 0.55, GOLD, 22); arrowAt(E2, 0.5, RED, 22); arrowAt(E3, 0.5, GOLD, 22);
+  dot(-8, 48, 11, CREAM); dot(-1.5, 4.5, 11, CREAM); dot(-70, 17, 11, CREAM);
+  mapLabel('欧洲', 4, 45, 40, CREAM); mapLabel('西非', 6, 11, 40, CREAM); mapLabel('加勒比', -78, 11.5, 40, CREAM);
+  g.restore(); rrect(500, 30, 760, 660, 18); g.lineWidth = 5; g.strokeStyle = 'rgba(243,237,230,0.85)'; g.stroke();
+  // 左：本小姐
+  if (ok(charImg)) {
+    g.save(); rrect(20, 30, 460, 420, 18); g.clip(); g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high'; g.drawImage(charImg, 60, 40, 650, 594, 20, 30, 460, 420); g.restore();
+    rrect(20, 30, 460, 420, 18); g.lineWidth = 5; g.strokeStyle = ORANGE; g.stroke();
+  }
+  g.font = `900 112px ${FONT}`; g.lineJoin = 'round'; g.lineWidth = 16; g.strokeStyle = '#0d0c12'; g.strokeText('三角贸易', 22, 566); g.fillStyle = ORANGE; g.fillText('三角贸易', 28, 572); g.fillStyle = CREAM; g.fillText('三角贸易', 22, 566);
+  g.font = `900 44px ${FONT}`; g.lineWidth = 10; g.strokeText('三角形，是风画的', 26, 632); g.fillStyle = GOLD; g.fillText('三角形，是风画的', 26, 632);
+  rrect(24, 650, 392, 50, 10); g.fillStyle = ORANGE; g.fill(); g.font = `900 30px ${FONT}`; g.fillStyle = INK; g.fillText('大小姐的航海课 #1', 44, 686);
+}
+
+// ── 录影 ──
+let SAMPLES = [];
+async function run() {
+  await loadTimeline();
+  { const mid = i => LINES[i].at + LINES[i].dur * 0.5, end = i => LINES[i].at + LINES[i].dur * 0.98;
+    SAMPLES = [2.0, ...LINES.flatMap((_, i) => [mid(i), end(i)]), OUTRO + 2.5].sort((a, b) => a - b); }
+  await Promise.all([document.fonts.load(`700 36px ${FONT}`), ...Object.values(ALL_IMG).map(im => new Promise(r => im.complete ? r() : (im.onload = im.onerror = r)))]);
+  log('images: ' + Object.entries(ALL_IMG).map(([k, im]) => k + '=' + ok(im)).join(' '));
+  if (Object.values(ALL_IMG).some(im => !ok(im))) throw new Error('image missing');
+  buildMap();
+  if (location.search.includes('shots')) {                    // 快速检查：不录影，只把每个抽样时间点画出来传回去
+    for (const s of SAMPLES) { draw(s); await new Promise(r => c.toBlob(b => post('/upload?name=frame_' + s.toFixed(1).padStart(5, '0') + '.png', b).then(r), 'image/png')); }
+    thumbnail(); await new Promise(r => c.toBlob(b => post('/upload?name=thumb.png', b).then(r), 'image/png'));
+    log('shots=' + SAMPLES.length); await post('/done', 'ok'); return;
+  }
+  await ac.resume();
+  log('audio state=' + ac.state);
+  const stream = new MediaStream([...c.captureStream(30).getVideoTracks(), ...dest.stream.getAudioTracks()]);
+  const mime = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'].find(m => MediaRecorder.isTypeSupported(m));
+  log('mime=' + mime);
+  const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 9_000_000, audioBitsPerSecond: 128_000 });
+  const chunks = []; rec.ondataavailable = e => e.data.size && chunks.push(e.data);
+  const stopped = new Promise(r => rec.onstop = r);
+  draw(0); rec.start(1000);
+  scheduleMusic(ac.currentTime + 0.05);
+  const T0 = performance.now() + 50; let frames = 0; const pending = [];
+  await new Promise(resolve => {
+    const frame = now => {
+      const t = Math.max(0, (now - T0) / 1000);
+      draw(Math.min(t, DURATION)); frames++;
+      while (SAMPLES.length && t >= SAMPLES[0]) { const s = SAMPLES.shift(); pending.push(new Promise(r => c.toBlob(b => post('/upload?name=frame_' + s.toFixed(1).padStart(5, '0') + '.png', b).then(r), 'image/png'))); }
+      if (t < DURATION) requestAnimationFrame(frame); else resolve();
+    };
+    requestAnimationFrame(frame);
+  });
+  rec.stop(); await stopped; await Promise.all(pending);
+  log('frames=' + frames + ' chunks=' + chunks.length);
+  await post('/upload?name=intro.webm', new Blob(chunks, { type: mime }));
+  thumbnail();
+  await new Promise(r => c.toBlob(b => post('/upload?name=thumb.png', b).then(r), 'image/png'));
+  await post('/done', 'ok');
+}
+run().catch(e => { log('fatal: ' + e); post('/done', 'fail'); });
+</script>
+</body>
+</html>

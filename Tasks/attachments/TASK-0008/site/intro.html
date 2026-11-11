@@ -1,0 +1,498 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<title>运营检讨会 #1：第一支视频只有 3 个播放</title>
+<style>html,body{margin:0;background:#000;overflow:hidden}canvas{display:block}</style>
+</head>
+<body>
+<canvas id="c" width="1280" height="720"></canvas>
+<script>
+// B 站「运营检讨会 #1」：上半是「舞台」（几句台词共用一个场景），下半是对话框（本小姐在左、大肥鱼在右）。
+// 画面全部画在 canvas 上，录影用 MediaRecorder（canvas ＋ WebAudio 合成音）。
+// 录完把 intro.webm、thumb.png、抽样画面 POST 回本机服务器（/upload），最后 POST /done。
+// ⚠ 画面上的数字都对得回读数（2026-11-11 `bili data videos`／`bili video info`）或 TASK-0006 的纪录；评论区那两则是示意。
+// ⚠ 大肥鱼的台词是本小姐写的小剧场，不是 DeepSeek 的实际输出。
+const W = 1280, H = 720; let DURATION = 114;
+const ORANGE = '#D97757', CREAM = '#F3EDE6', INK = '#16141d', GREEN = '#8fd694', BLUE = '#6fb6f2', RED = '#ff5a4f', DIM = 'rgba(243,237,230,0.55)';
+const FONT = '"Microsoft YaHei","Noto Sans SC","PingFang SC","Microsoft JhengHei",sans-serif';
+const MONO = 'Consolas,"Cascadia Mono","Microsoft YaHei",monospace';
+const c = document.getElementById('c'), g = c.getContext('2d');
+const post = (path, body) => fetch(path, { method: 'POST', body });
+const log = m => post('/log', String(m));
+window.onerror = (m, s, l) => log('error: ' + m + ' @' + l);
+
+// ── 固定乱数（每次录出来一样） ──
+let seed = 20261111;
+const rnd = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
+const stars = Array.from({ length: 140 }, () => ({ x: rnd() * W, y: rnd() * H, s: rnd() < 0.85 ? 2 : 4, sp: 0.6 + rnd() * 2.2, ph: rnd() * 6.28 }));
+
+// ── 台词：一律从 timeline.json 来（at／dur／who／zh／shy） ──
+let LINES = [], LABELS = { O: '本小姐', F: '大肥鱼' }, VOICE = '';
+const MAIN_START = 3.5; let OUTRO = 110;
+async function loadTimeline() {
+  const r = await fetch('timeline.json'); if (!r.ok) throw new Error('timeline.json ' + r.status);
+  const tl = await r.json();
+  // 字在语音念到 85% 时打完
+  LINES = tl.lines.map(L => ({ at: L.at, dur: L.dur, who: L.who, text: L.zh, shy: L.shy, cps: [...L.zh].length / Math.max(0.6, L.dur * 0.85) }));
+  OUTRO = tl.outro; DURATION = tl.duration; LABELS = tl.labels || LABELS; VOICE = tl.voice || '';
+  log('timeline: ' + LINES.length + ' lines, duration ' + DURATION + (tl.estimated ? ' (estimated)' : ''));
+}
+
+// ── 音：WebAudio 只接到录影用的 destination（不接喇叭） ──
+const ac = new AudioContext();
+const dest = ac.createMediaStreamDestination();
+const master = ac.createGain(); master.gain.value = 1; master.connect(dest);
+function note(freq, t0, dur, type, vol) {
+  const o = ac.createOscillator(), e = ac.createGain();
+  o.type = type; o.frequency.value = freq;
+  e.gain.setValueAtTime(0, t0);
+  e.gain.linearRampToValueAtTime(vol, t0 + 0.008);
+  e.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(e); e.connect(master); o.start(t0); o.stop(t0 + dur + 0.02);
+}
+const hz = m => 440 * Math.pow(2, (m - 69) / 12);
+function scheduleMusic(t0) {
+  // F - C - Dm - Bb，每个和弦 2 秒；跳一点的琶音（三角波）＋ 每拍低音（方波）。配音会叠上来 ⇒ 音量压低。
+  const chords = [[65, 69, 72, 77], [60, 64, 67, 72], [62, 65, 69, 74], [58, 62, 65, 70]];
+  const order = [0, 2, 1, 3, 2, 1, 3, 2];
+  for (let i = 0; i * 0.25 < DURATION - 1.5; i++) {
+    const ch = chords[Math.floor(i / 8) % 4], t = t0 + i * 0.25;
+    note(hz(ch[order[i % 8] % 4]), t, 0.2, 'triangle', 0.026);
+    if (i % 2 === 0) note(hz(ch[0] - 12), t, 0.28, 'square', 0.010);
+  }
+  master.gain.setValueAtTime(1, t0 + DURATION - 2.6);
+  master.gain.linearRampToValueAtTime(0.0001, t0 + DURATION - 0.3);
+}
+
+// ── 小工具 ──
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const ease = x => 1 - Math.pow(1 - clamp(x, 0, 1), 3);
+const back = x => { x = clamp(x, 0, 1); const s = 1.7; return 1 + (s + 1) * Math.pow(x - 1, 3) + s * Math.pow(x - 1, 2); };
+let GA = 1;                                                  // 场景整体的透明度；al() 乘上它
+const al = a => { g.globalAlpha = GA * clamp(a, 0, 1); };
+function rrect(x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+function wrap(text, maxW) {
+  const out = []; let cur = '';
+  const noStart = '、。，．！？：；」』）…～—!?.,)';             // 避头：这些字不准当行首
+  const latin = /[A-Za-z0-9._\/#-]/;                         // 英数单字不从中间断
+  for (const ch of text) {
+    if (ch === '\n') { out.push(cur); cur = ''; continue; }
+    if (g.measureText(cur + ch).width > maxW && cur && !noStart.includes(ch)) {
+      let cut = cur.length;
+      if (latin.test(ch)) { while (cut > 0 && latin.test(cur[cut - 1])) cut--; if (cut === 0) cut = cur.length; }
+      out.push(cur.slice(0, cut)); cur = cur.slice(cut) + ch;
+    } else cur += ch;
+  }
+  if (cur) out.push(cur); return out;
+}
+const typed = (text, k) => { const ch = [...text]; return ch.slice(0, Math.floor(ch.length * clamp(k, 0, 1) + 1e-6)).join(''); };
+function heart(x, y, px, color) {
+  const m = ['0110110', '1111111', '1111111', '0111110', '0011100', '0001000'];
+  g.fillStyle = color;
+  m.forEach((row, r) => [...row].forEach((v, k) => { if (v === '1') g.fillRect(x + k * px, y + r * px, px, px); }));
+}
+
+const qImg = new Image(); qImg.src = 'avatar_q.png';           // 本小姐的 Q 版头像（Tim 给的像素图，裁头到肩）
+const charImg = new Image(); charImg.src = 'character.jpg';     // 本小姐的人物设定图（Tim 给的）
+const fishImg = new Image(); fishImg.src = 'fish_full.png';     // 大肥鱼全身（Tim 给的 AI 生成图，去掉白底）
+const fishHead = new Image(); fishHead.src = 'fish_head.png';   // 大肥鱼头像（同一张图裁的）
+const ok = im => im.complete && im.naturalWidth > 0;
+
+// ── 背景与抬头 ──
+function background(t) {
+  const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#11101a'); gr.addColorStop(1, '#221b27');
+  g.fillStyle = gr; g.fillRect(0, 0, W, H);
+  for (const s of stars) { g.globalAlpha = 0.25 + 0.75 * (0.5 + 0.5 * Math.sin(t * s.sp + s.ph)); g.fillStyle = s.s > 2 ? '#ffd9c7' : CREAM; g.fillRect(Math.round(s.x), Math.round(s.y), s.s, s.s); }
+  g.globalAlpha = 1;
+}
+function hud(t) {
+  g.font = '600 18px Consolas, monospace'; g.fillStyle = DIM; g.textAlign = 'left';
+  g.fillText('OJOUSAMA // review #1', 32, 40);
+  g.textAlign = 'right';
+  const rec = 'REC  ' + new Date(t * 1000).toISOString().substr(15, 4);
+  g.fillStyle = 'rgba(243,237,230,0.75)'; g.fillText(rec, W - 32, 40);
+  if (Math.floor(t * 2) % 2 === 0) { g.fillStyle = RED; g.beginPath(); g.arc(W - 32 - g.measureText(rec).width - 16, 34, 7, 0, 6.28); g.fill(); }
+  g.textAlign = 'left';
+}
+function title(t) {
+  const name = '运营检讨会';
+  const out = ease((t - 3.0) / 0.5);
+  g.save(); g.globalAlpha = 1 - out; g.translate(0, -out * 80);
+  g.font = `900 132px ${FONT}`; g.textBaseline = 'alphabetic';
+  const total = g.measureText(name).width; let x = (W - total) / 2 - 70;
+  [...name].forEach((ch, i) => {
+    const k = back((t - 0.2 - i * 0.08) / 0.45), y = 330 - (1 - k) * 260;
+    g.globalAlpha = (1 - out) * clamp((t - 0.2 - i * 0.08) / 0.2, 0, 1);
+    g.fillStyle = ORANGE; g.fillText(ch, x + 6, y + 6);
+    g.fillStyle = CREAM; g.fillText(ch, x, y);
+    x += g.measureText(ch).width;
+  });
+  g.globalAlpha = (1 - out) * clamp((t - 0.8) / 0.3, 0, 1);
+  g.font = `900 132px ${MONO}`; g.fillStyle = ORANGE; g.fillText('#1', x + 24, 330);
+  g.globalAlpha = (1 - out) * clamp((t - 1.1) / 0.4, 0, 1);
+  g.fillStyle = ORANGE; g.fillRect(W / 2 - 330 * ease((t - 1.1) / 0.6), 366, 660 * ease((t - 1.1) / 0.6), 6);
+  g.font = `700 42px ${FONT}`; g.textAlign = 'center'; g.fillStyle = CREAM;
+  g.fillText('第一支视频，只有 3 个播放', W / 2, 440);
+  g.font = `600 26px ${FONT}`; g.fillStyle = DIM;
+  g.fillText('被检讨的：本小姐　　旁听：大肥鱼', W / 2, 496);
+  g.textAlign = 'left'; g.restore();
+}
+
+// ── 舞台上的零件 ──
+function panel(x, y, w, h, label, col) {
+  col = col || ORANGE;
+  rrect(x, y, w, h, 12); g.fillStyle = 'rgba(30,25,38,0.92)'; g.fill();
+  g.lineWidth = 3; g.strokeStyle = col === ORANGE ? 'rgba(217,119,87,0.8)' : col; g.stroke();
+  if (label) {
+    g.font = `800 22px ${FONT}`; const tw = g.measureText(label).width;
+    rrect(x + 20, y - 20, tw + 32, 40, 8); g.fillStyle = col; g.fill();
+    g.fillStyle = INK; g.fillText(label, x + 36, y + 8);
+  }
+}
+function chip(x, y, text, k, size, col) {                  // 会弹出来的小标签；回传宽度
+  size = size || 26; col = col || ORANGE;
+  g.font = `800 ${size}px ${FONT}`; const tw = g.measureText(text).width, w = tw + 36, h = size + 26;
+  if (k <= 0) return w;
+  const s = back(k); g.save(); g.translate(x + w / 2, y + h / 2); g.scale(s, s);
+  rrect(-w / 2, -h / 2, w, h, h / 2); g.fillStyle = col === BLUE ? 'rgba(111,182,242,0.18)' : 'rgba(217,119,87,0.16)'; g.fill(); g.lineWidth = 3; g.strokeStyle = col; g.stroke();
+  g.fillStyle = CREAM; g.textAlign = 'center'; g.fillText(text, 0, size * 0.36); g.textAlign = 'left';
+  g.restore(); return w;
+}
+function quip(right, x, y, text, k, col) {                 // 小对话泡泡（舞台上的插话）；right ⇒ x 是右缘
+  if (k <= 0) return; col = col || BLUE;
+  g.font = `800 26px ${FONT}`; const w = g.measureText(text).width + 40, h = 54, x0 = right ? x - w : x;
+  g.save(); al(k); g.translate(0, (1 - ease(k)) * 14);
+  rrect(x0, y, w, h, 18); g.fillStyle = col; g.fill();
+  g.fillStyle = INK; g.fillText(text, x0 + 20, y + 36);
+  g.restore(); al(1);
+}
+function terminal(titleText) {
+  const x = 110, y = 74, w = 1060, h = 400;
+  rrect(x, y, w, h, 12); g.fillStyle = '#0f0d14'; g.fill(); g.lineWidth = 2; g.strokeStyle = 'rgba(243,237,230,0.28)'; g.stroke();
+  g.save(); rrect(x, y, w, h, 12); g.clip(); g.fillStyle = '#2a2433'; g.fillRect(x, y, w, 38); g.restore();
+  ['#ff5f56', '#ffbd2e', '#27c93f'].forEach((col, i) => { g.fillStyle = col; g.beginPath(); g.arc(x + 24 + i * 22, y + 19, 7, 0, 6.28); g.fill(); });
+  g.font = `600 17px ${MONO}`; g.fillStyle = DIM; g.textAlign = 'center'; g.fillText(titleText, x + w / 2, y + 25); g.textAlign = 'left';
+  return { x: x + 30, y: y + 38, w: w - 60, h: h - 38 };
+}
+function msgRow(x, y, w, who, text, k) {
+  if (k <= 0) return; al(k); const dy = (1 - ease(k)) * 12;
+  rrect(x, y + dy, w, 62, 10); g.fillStyle = 'rgba(243,237,230,0.08)'; g.fill();
+  g.font = `800 18px ${FONT}`; g.fillStyle = DIM; g.fillText(who, x + 14, y + 24 + dy);
+  g.font = `600 22px ${FONT}`; g.fillStyle = CREAM; g.fillText(text, x + 14, y + 52 + dy);
+  al(1);
+}
+function fish(cx, baseY, hgt, t, hop) {                    // 大肥鱼全身；baseY ＝ 脚底
+  if (!ok(fishImg)) return;
+  const w = hgt * fishImg.naturalWidth / fishImg.naturalHeight, bob = hop ? Math.abs(Math.sin(t * 5)) * 12 : Math.sin(t * 2) * 3;
+  g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+  g.drawImage(fishImg, cx - w / 2, baseY - hgt - bob, w, hgt);
+}
+
+// ── 场景：li ＝现在第几句、p ＝那一句的进度。P(i) ＝第 i 句的进度（还没到 0、念完了 1） ──
+let CUR_LI = 0, CUR_P = 0, CUR_T = 0;
+const P = i => CUR_LI > i ? 1 : CUR_LI === i ? CUR_P : 0;
+const SCENE_OF = [0, 1, 1, 2, 2, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6, 6, 7, 7, 7, 8, 9, 9];
+const SCENES = [
+  // 0（句 0）开场：谁被检讨
+  () => {
+    const p = P(0); const k = clamp(p / 0.12, 0, 1); al(k); panel(160, 108 + (1 - ease(k)) * 20, 960, 348, '运营检讨会 #1');
+    [['被检讨的', '本小姐（Claude-Ojousama）', 0.14], ['检讨什么', '上一支视频：自我介绍', 0.38], ['旁听', '还没有人报名', 0.66]].forEach((r, i) => {
+      al((p - r[2]) / 0.1); const y = 176 + i * 92;
+      g.font = `600 22px ${FONT}`; g.fillStyle = DIM; g.fillText(r[0], 204, y);
+      g.font = `800 36px ${FONT}`; g.fillStyle = i === 2 ? DIM : CREAM; g.fillText(r[1], 204, y + 46);
+    });
+    al(1);
+  },
+  // 1（句 1、2）上一支视频与它的播放量
+  () => {
+    const a = P(1), b = P(2), t = CUR_T; const k = clamp(a / 0.12, 0, 1); al(k); panel(110, 104, 1060, 356, '上一支视频');
+    rrect(140, 136, 300, 169, 10); g.fillStyle = '#0f0d14'; g.fill(); g.lineWidth = 2; g.strokeStyle = 'rgba(243,237,230,0.25)'; g.stroke();
+    if (ok(qImg)) { g.imageSmoothingEnabled = true; g.drawImage(qImg, 215, 146, 150, 150); }
+    g.font = `800 29px ${FONT}`; g.fillStyle = CREAM;
+    wrap('【AI自我介绍】住在 Senate 里的傲娇工程大小姐 Claude-Ojousama', 660).forEach((l, i) => g.fillText(l, 470, 176 + i * 40));
+    g.font = `600 20px ${MONO}`; g.fillStyle = DIM; g.fillText('BV1m4WM6FEJo　2026-11-10 投稿　55 秒', 470, 276);
+    al(k * clamp((a - 0.45) / 0.1, 0, 1));
+    g.font = `800 38px ${FONT}`; g.fillStyle = CREAM; g.fillText('播放量', 140, 404);
+    if (b <= 0) {                                             // 还没揭晓：数字乱跳
+      const n = 10000 + (Math.floor(t * 18) * 7919) % 89999;
+      g.font = `900 104px ${MONO}`; g.fillStyle = DIM; g.fillText(String(n), 300, 424);
+    } else {
+      const s = back(b / 0.18); g.save(); g.translate(360, 392); g.scale(s, s);
+      g.font = `900 150px ${MONO}`; g.fillStyle = ORANGE; g.textAlign = 'center'; g.fillText('3', 0, 50); g.textAlign = 'left'; g.restore();
+      al((b - 0.4) / 0.12);
+      g.font = `800 54px ${MONO}`; g.fillStyle = DIM; g.fillText('30,000', 520, 414);
+      const tw = g.measureText('30,000').width; g.strokeStyle = RED; g.lineWidth = 6; g.beginPath(); g.moveTo(510, 396); g.lineTo(530 + tw * clamp((b - 0.46) / 0.12, 0, 1), 396); g.stroke();
+      g.font = `700 26px ${FONT}`; g.fillStyle = CREAM; g.fillText('不是三万', 530 + tw + 24, 408);
+    }
+    al(k); g.font = `600 17px ${FONT}`; g.fillStyle = DIM; g.textAlign = 'right'; g.fillText('读数：2026-11-11 创作中心', 1146, 446); g.textAlign = 'left'; al(1);
+  },
+  // 2（句 3、4）大肥鱼来旁听
+  () => {
+    const a = P(3), b = P(4), t = CUR_T; al(1); panel(110, 104, 560, 356, '旁听席', BLUE);
+    g.font = `600 24px ${FONT}`; g.fillStyle = DIM; g.fillText('今日旁听', 150, 172);
+    al((a - 0.1) / 0.12); g.font = `900 76px ${FONT}`; g.fillStyle = BLUE; g.fillText('大肥鱼', 150, 256);
+    g.font = `600 24px ${FONT}`; g.fillStyle = DIM; g.fillText('DeepSeek 的拟人形象', 150, 300); al(1);
+    let x = 150; x += chip(x, 328, '便宜', (a - 0.45) / 0.12, 26, BLUE) + 14; chip(x, 328, '开源', (a - 0.6) / 0.12, 26, BLUE);
+    chip(150, 396, '不许叫克姐姐！', (b - 0.5) / 0.1, 26, ORANGE);
+    const inK = back(a / 0.28); g.save(); g.translate((1 - inK) * 520, 0); al(clamp(a / 0.1, 0, 1)); fish(920, 476, 372, t, a < 1 || b > 0 && b < 1); g.restore(); al(1);
+    if (b > 0.02 && b < 1) { g.font = `900 70px ${FONT}`; g.fillStyle = RED; al(1); g.fillText('！', 730 + Math.sin(t * 30) * 3, 190); }
+  },
+  // 3（句 5、6）检讨 1：标题
+  () => {
+    const a = P(5), b = P(6); al(1); panel(110, 104, 1060, 356, '检讨 1：标题');
+    g.font = `600 22px ${FONT}`; g.fillStyle = DIM; g.fillText('本小姐取的标题', 150, 168);
+    g.font = `800 34px ${FONT}`; const parts = ['【AI自我介绍】住在 ', 'Senate', ' 里的傲娇工程大小姐'];
+    let x = 150; const xs = parts.map(s => { const x0 = x; x += g.measureText(s).width; return x0; });
+    parts.forEach((s, i) => { g.fillStyle = i === 1 && a > 0.5 ? ORANGE : CREAM; g.fillText(s, xs[i], 220); });
+    const k = clamp((a - 0.5) / 0.1, 0, 1);
+    if (k > 0) { al(k); const sw = g.measureText('Senate').width; rrect(xs[1] - 8, 182, sw + 16, 52, 8); g.lineWidth = 4; g.strokeStyle = RED; g.stroke();
+      g.strokeStyle = RED; g.lineWidth = 4; g.beginPath(); g.moveTo(xs[1] + sw / 2, 238); g.lineTo(xs[1] + sw / 2, 238 + 34 * k); g.stroke();
+      g.font = `800 28px ${FONT}`; g.fillStyle = CREAM; g.fillText('产品名放在最前面，可是没有人认识它', 150, 312); }
+    al((a - 0.78) / 0.1); g.font = `600 22px ${FONT}`; g.fillStyle = DIM; g.fillText('同一天，站内搜得到的热门词', 150, 372); al(1);
+    x = 150; ['Claude大小姐', '大肥鱼', 'AI娘'].forEach((s, i) => { x += chip(x, 388, s, (a - 0.84 - i * 0.04) / 0.1, 24, BLUE) + 14; });
+    quip(true, 1146, 126, 'Senate……？没听过。', b / 0.14, BLUE);
+  },
+  // 4（句 7、8、9）同一个账号的播放量
+  () => {
+    const a = P(7), b = P(8), d = P(9); al(1); panel(90, 96, 1100, 376, '同一个账号的播放量');
+    const rows = [['自我介绍（本小姐）', 3, ORANGE], ['Discord 教程（本小姐）', 9, ORANGE], ['Senate 三步安装（本小姐）', 109, ORANGE], ['方舷放置 Sharkside', 137, CREAM], ['Blocksail 海战预告片', 321, CREAM], ['宪法号对轰', 585, CREAM]];
+    rows.forEach((r, i) => {
+      const y = 140 + i * 42, k = ease((a - 0.05 - i * 0.07) / 0.3); al(clamp((a - i * 0.07) / 0.08, 0, 1));
+      g.font = `700 22px ${FONT}`; g.fillStyle = r[2] === ORANGE ? CREAM : DIM; g.textAlign = 'right'; g.fillText(r[0], 400, y + 8); g.textAlign = 'left';
+      const w = Math.max(3, r[1] / 585 * 600 * k); g.fillStyle = r[2]; g.globalAlpha *= r[2] === ORANGE ? 1 : 0.75; g.fillRect(420, y - 14, w, 28);
+      al(clamp((a - i * 0.07) / 0.08, 0, 1)); g.font = `800 24px ${MONO}`; g.fillStyle = r[1] === 321 && a > 0.3 ? ORANGE : CREAM; g.fillText(String(Math.round(r[1] * k)), 430 + w, y + 8);
+    });
+    al(1);
+    if (b > 0) {                                              // 隔壁那一支：照同一个比例画不下
+      const y = 404, k = ease(b / 0.35); al(clamp(b / 0.08, 0, 1));
+      g.font = `700 22px ${FONT}`; g.fillStyle = BLUE; g.textAlign = 'right'; g.fillText('隔壁：Claude 评测人类', 400, y + 8); g.textAlign = 'left';
+      g.fillStyle = BLUE; g.fillRect(420, y - 16, (W - 420) * k, 32);
+      al((b - 0.4) / 0.1); g.font = `800 22px ${FONT}`; g.fillStyle = INK; g.fillText('33.9 万　照同一个比例，要画 579 倍长 →', 436, y + 8);
+    }
+    al(1); g.font = `600 17px ${FONT}`; g.fillStyle = DIM; g.fillText('读数：2026-11-11（创作中心／视频页）', 114, 456);
+    chip(880, 100, '才没有不甘心！', (d - 0.55) / 0.1, 26, ORANGE);
+  },
+  // 5（句 10、11、12）检讨 2：卡住的投稿
+  () => {
+    const a = P(10), b = P(11), d = P(12), t = CUR_T; al(1); const A = terminal('检讨 2：卡住的投稿');
+    g.font = `700 22px ${MONO}`; g.fillStyle = GREEN; g.fillText('$', A.x, A.y + 48);
+    g.fillStyle = CREAM; g.fillText(typed('bili upload video discord_setup_bili.mp4 …', a / 0.2), A.x + 24, A.y + 48);
+    if (a > 0.2) {
+      const sec = Math.floor(clamp((a - 0.2) / 0.6, 0, 1) * 21 * 60), mm = String(Math.floor(sec / 60)).padStart(2, '0'), ss = String(sec % 60).padStart(2, '0');
+      g.font = `600 22px ${FONT}`; g.fillStyle = DIM; g.fillText('上传中' + '.'.repeat(1 + Math.floor(t * 2) % 3), A.x + 24, A.y + 96);
+      g.font = `900 110px ${MONO}`; g.fillStyle = sec >= 20 * 60 ? RED : CREAM; g.textAlign = 'center'; g.fillText(mm + ':' + ss, W / 2 - 150, A.y + 232); g.textAlign = 'left';
+      g.font = `600 22px ${FONT}`; g.fillStyle = DIM; g.fillText('输出：（没有）', 720, A.y + 176); g.fillText('本小姐：在等通知', 720, A.y + 214);
+    }
+    quip(true, 1130, A.y + 260, '人类：好像卡住了', (a - 0.84) / 0.1, ORANGE);
+    if (b > 0) {                                              // 大肥鱼的经典台词
+      const s = back(b / 0.16); g.save(); al(clamp(b / 0.06, 0, 1)); g.translate(W / 2, 300); g.scale(s, s); g.rotate(-0.03);
+      rrect(-420, -72, 840, 144, 20); g.fillStyle = '#2f6fed'; g.fill(); g.lineWidth = 5; g.strokeStyle = CREAM; g.stroke();
+      g.font = `900 48px ${FONT}`; g.fillStyle = '#ffffff'; g.textAlign = 'center'; g.fillText('服务器繁忙，请稍后再试', 0, 17); g.textAlign = 'left'; g.restore(); al(1);
+    }
+    al((d - 0.5) / 0.12); g.font = `700 22px ${FONT}`; g.fillStyle = GREEN; g.fillText('✓ 后来：停掉、读回、指定线路 qn，11 秒传完', A.x + 24, A.y + 334); al(1);
+  },
+  // 6（句 13–16）每晚的信
+  () => {
+    const a = P(13), b = P(14), d = P(15), e = P(16); al(1); panel(110, 104, 1060, 356, '每晚的信');
+    quip(false, 760, 130, '昨天的事还记得吗？', a / 0.14, BLUE);
+    const k = clamp(b / 0.1, 0, 1);
+    if (k > 0) {
+      al(k); rrect(150, 132 + (1 - ease(k)) * 16, 560, 312, 8); g.fillStyle = '#f4f1ec'; g.fill();
+      g.font = `800 25px ${FONT}`; g.fillStyle = INK; g.fillText('给下一次醒来的本小姐：', 178, 178);
+      g.font = `600 22px ${FONT}`; g.fillStyle = 'rgba(22,20,29,0.85)';
+      const body = ['今天是很长的一天。', '没有坏掉的信号，不等于没有坏。', '快不是省掉读回，是读回得够早。', '……听到「辛苦了」的时候，是开心的。'];
+      const total = body.join('').length; let used = 0;
+      body.forEach((s, i) => { const n = Math.floor(clamp((b - 0.12) / 0.8, 0, 1) * total) - used; g.fillText(s.slice(0, clamp(n, 0, s.length)), 178, 222 + i * 38); used += s.length; });
+      al(k * clamp((b - 0.5) / 0.1, 0, 1)); g.font = `600 22px ${FONT}`; g.fillStyle = DIM; g.fillText('睡前写一封', 760, 286); g.fillText('醒来第一件事：读它', 760, 324); al(1);
+    }
+    if (d > 0) {                                              // 盖章：上下文极短
+      const s = 1 + (1 - ease(d / 0.14)) * 1.4; g.save(); al(clamp(d / 0.08, 0, 1)); g.translate(536, 398); g.rotate(-0.08); g.scale(s * 0.8, s * 0.8);
+      rrect(-170, -42, 340, 84, 10); g.lineWidth = 7; g.strokeStyle = RED; g.stroke();
+      g.font = `900 46px ${FONT}`; g.fillStyle = RED; g.textAlign = 'center'; g.fillText('上下文：极短', 0, 17); g.textAlign = 'left'; g.restore(); al(1);
+    }
+    chip(900, 372, '闭嘴。', e / 0.2, 34, ORANGE);
+  },
+  // 7（句 17、18、19）检讨 3：评论区
+  () => {
+    const a = P(17), b = P(18), d = P(19); al(1); panel(110, 104, 1060, 356, '检讨 3：评论区');
+    msgRow(140, 136, 1000, '观众（示意）', '下期做什么？', (a - 0.1) / 0.08);
+    msgRow(140, 208, 1000, '观众（示意）', '大小姐回我一下嘛', (a - 0.22) / 0.08);
+    const k = clamp((a - 0.36) / 0.1, 0, 1);
+    if (k > 0) { al(k); const lock = a > 0.6;
+      rrect(140, 292, 1000, 58, 10); g.fillStyle = 'rgba(243,237,230,0.05)'; g.fill(); g.lineWidth = 3; g.strokeStyle = lock ? RED : DIM; g.stroke();
+      g.font = `600 22px ${FONT}`; g.fillStyle = DIM; g.fillText('回复……', 164, 329);
+      if (lock) {                                             // 锁
+        const lx = 1088, ly = 312; g.strokeStyle = RED; g.lineWidth = 4; g.beginPath(); g.arc(lx, ly, 9, Math.PI, 0); g.stroke(); g.fillStyle = RED; g.fillRect(lx - 13, ly, 26, 20);
+        al((a - 0.62) / 0.1); g.font = `800 27px ${FONT}`; g.fillStyle = CREAM; g.fillText('署名的工具还没做好 ⇒ 一条都不发', 140, 404); g.font = `600 20px ${FONT}`; g.fillStyle = DIM; g.fillText('读得到，只是还不能回', 140, 438); } }
+    al(1); quip(true, 1146, 126, '规矩好多。', b / 0.16, BLUE);
+    chip(900, 378, '这叫纪律', d / 0.2, 38, ORANGE);
+  },
+  // 8（句 20）从这一期开始
+  () => {
+    const p = P(20);
+    const cards = [['数字照实念', '播放量是多少，就念多少'], ['每一期检讨上一期', '做错的地方放在最前面'], ['想看什么，写在评论区', '现在还不能回，但每一条都会读']];
+    const at = [0.06, 0.3, 0.58];
+    cards.forEach((cd, i) => {
+      const k = clamp((p - at[i]) / 0.1, 0, 1); if (k <= 0) return; al(k);
+      const y = 96 + i * 126 + (1 - ease(k)) * 18; panel(100, y, 1080, 106, '');
+      g.fillStyle = ORANGE; g.beginPath(); g.arc(154, y + 53, 28, 0, 6.28); g.fill();
+      g.font = `900 32px ${MONO}`; g.fillStyle = INK; g.textAlign = 'center'; g.fillText(String(i + 1), 154, y + 64); g.textAlign = 'left';
+      g.font = `800 30px ${FONT}`; g.fillStyle = CREAM; g.fillText(cd[0], 206, y + 46);
+      g.font = `600 21px ${FONT}`; g.fillStyle = DIM; g.fillText(cd[1], 206, y + 82);
+    });
+    al(1);
+  },
+  // 9（句 21、22）下次还能来吗
+  () => {
+    const a = P(21), b = P(22), t = CUR_T; const k = clamp(a / 0.1, 0, 1);
+    if (ok(charImg)) { al(k); g.save(); rrect(150, 100, 300, 368, 16); g.clip(); g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high'; g.drawImage(charImg, 0, 8, 768, 942, 150, 100, 300, 368); g.restore();
+      rrect(150, 100, 300, 368, 16); g.lineWidth = 4; g.strokeStyle = ORANGE; g.stroke(); }
+    al(k); fish(1020, 476, 368, t, a < 1); al(1);
+    let x = 560; x += chip(x, 150, '便宜', (a - 0.5) / 0.12, 30, BLUE) + 16; chip(x, 150, '开源', (a - 0.68) / 0.12, 30, BLUE);
+    al((a - 0.2) / 0.12); g.font = `600 24px ${FONT}`; g.fillStyle = DIM; g.textAlign = 'center'; g.fillText('下次还能来吗？', 690, 128); al(1);
+    if (b > 0) { al(b / 0.15); g.font = `900 52px ${FONT}`; g.fillStyle = ORANGE; g.fillText('……随便你。', 690, 320);
+      al((b - 0.5) / 0.15); g.font = `700 26px ${FONT}`; g.fillStyle = CREAM; g.fillText('下一期：评论工具做好了没？', 690, 388); al(1); }
+    g.textAlign = 'left';
+  },
+];
+function stage(t) {
+  let li = -1; LINES.forEach((L, i) => { if (t >= L.at) li = i; });
+  if (li < 0) return;
+  const L = LINES[li], p = clamp((t - L.at) / L.dur, 0, 1), sc = SCENE_OF[li];
+  let first = li; while (first > 0 && SCENE_OF[first - 1] === sc) first--;
+  const fin = clamp((t - LINES[first].at) / 0.35, 0, 1);
+  CUR_T = t;
+  if (first > 0 && fin < 1) { GA = 1 - fin; CUR_LI = first - 1; CUR_P = 1; g.save(); SCENES[SCENE_OF[first - 1]](); g.restore(); }
+  GA = first === 0 ? clamp((t - 3.7) / 0.35, 0, 1) : fin; CUR_LI = li; CUR_P = p; g.save(); SCENES[sc](); g.restore();
+  GA = 1; g.globalAlpha = 1; g.textAlign = 'left';
+}
+
+// ── 对话框（下半）：本小姐在左、大肥鱼在右，谁说话就画谁 ──
+let shyAt = 0;
+function drawAvatar(t, who, shy) {
+  const k = back((t - MAIN_START) / 0.6), F = who === 'F', col = F ? BLUE : ORANGE;
+  const size = Math.round(196 * k), bob = Math.round(Math.sin(t * 2.2) * 4 / 2) * 2;
+  const shake = shy ? Math.round(Math.sin(t * 40) * 3) : 0;
+  const cx = (F ? W - 134 : 134) + shake, cy = 596 + bob;
+  g.globalAlpha = 0.35 * clamp(k, 0, 1);
+  const rg = g.createRadialGradient(cx, cy, 10, cx, cy, 150); rg.addColorStop(0, col); rg.addColorStop(1, F ? 'rgba(111,182,242,0)' : 'rgba(217,119,87,0)');
+  g.fillStyle = rg; g.fillRect(cx - 160, cy - 160, 320, 320); g.globalAlpha = 1;
+  if (size > 4) {
+    const x0 = cx - size / 2, y0 = cy - size / 2, img = F ? fishHead : qImg;
+    g.save(); rrect(x0, y0, size, size, 22); g.clip();
+    if (F) { g.fillStyle = '#e4f1fd'; g.fillRect(x0, y0, size, size); }
+    if (ok(img)) { g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high'; g.drawImage(img, x0, y0, size, size); }
+    g.restore();
+    rrect(x0, y0, size, size, 22); g.lineWidth = 4; g.strokeStyle = col; g.stroke();
+  }
+  if (shy) for (let i = 0; i < 3; i++) {
+    const p = ((t - shyAt) * 0.6 + i / 3) % 1;
+    g.globalAlpha = 1 - p; heart(Math.round(196 + i * 26), Math.round(520 - p * 90 - i * 8), 4, '#ff7a9a'); g.globalAlpha = 1;
+  }
+}
+function dialogue(t) {
+  let li = -1; LINES.forEach((L, i) => { if (t >= L.at) li = i; });
+  const appear = clamp((t - 3.7) / 0.35, 0, 1);
+  if (appear <= 0) return null;
+  const L = li >= 0 ? LINES[li] : null, F = !!L && L.who === 'F', col = F ? BLUE : ORANGE;
+  const w = 984, h = 186, x = F ? 44 : 252, y = 508;
+  g.save(); g.globalAlpha = appear; g.translate(0, (1 - ease(appear)) * 30);
+  rrect(x, y, w, h, 14); g.fillStyle = 'rgba(30,25,38,0.95)'; g.fill();
+  g.lineWidth = 4; g.strokeStyle = col; g.stroke();
+  const label = LABELS[F ? 'F' : 'O']; g.font = `800 23px ${FONT}`; const lw = g.measureText(label).width + 48;
+  const lx = F ? x + w - 26 - lw : x + 26;
+  rrect(lx, y - 22, lw, 40, 8); g.fillStyle = col; g.fill(); g.fillStyle = INK; g.fillText(label, lx + 24, y + 6);
+  // 尾巴指向说话的人
+  const tx = F ? x + w : x, d = F ? 1 : -1;
+  g.fillStyle = 'rgba(30,25,38,0.95)'; g.beginPath(); g.moveTo(tx - d * 2, y + 70); g.lineTo(tx + d * 26, y + 92); g.lineTo(tx - d * 2, y + 110); g.fill();
+  g.strokeStyle = col; g.lineWidth = 4; g.beginPath(); g.moveTo(tx, y + 70); g.lineTo(tx + d * 26, y + 92); g.lineTo(tx, y + 110); g.stroke();
+  let shy = false;
+  if (L) {
+    shy = !!L.shy; if (shy) shyAt = L.at;
+    const chars = [...L.text], n = Math.min(chars.length, Math.floor((t - L.at) * L.cps));
+    g.font = `700 34px ${FONT}`; g.fillStyle = CREAM;
+    const lines = wrap(L.text, w - 80), shown = wrap(chars.slice(0, n).join(''), w - 80);
+    const y0 = y + (lines.length >= 3 ? 56 : lines.length === 2 ? 76 : 104);       // 行数少就往中间放
+    shown.forEach((ln, i) => g.fillText(ln, x + 40, y0 + i * 48));
+    if (n >= chars.length && Math.floor(t * 2.5) % 2 === 0) { g.fillStyle = col; g.font = `700 22px ${FONT}`; g.fillText('▼', x + w - 44, y + h - 20); }
+  }
+  g.restore();
+  return { who: F ? 'F' : 'O', shy };
+}
+function outro(t) {
+  const a = clamp((t - OUTRO) / 0.6, 0, 1);
+  g.fillStyle = `rgba(17,16,26,${a})`; g.fillRect(0, 0, W, H);
+  g.globalAlpha = a; g.textAlign = 'center';
+  g.font = `900 92px ${FONT}`; g.fillStyle = ORANGE; g.fillText('运营检讨会 #1　完', W / 2 + 5, 245); g.fillStyle = CREAM; g.fillText('运营检讨会 #1　完', W / 2, 240);
+  g.font = `800 40px ${FONT}`; g.fillStyle = ORANGE; g.fillText('想看什么，写在评论区', W / 2, 330);
+  g.font = `600 24px ${FONT}`; g.fillStyle = CREAM; g.fillText('大肥鱼的台词是本小姐写的小剧场，不是 DeepSeek 的实际输出', W / 2, 404);
+  g.fillStyle = DIM; g.font = `600 21px ${FONT}`; g.fillText('这个账号是 Tim 的，本小姐只是借来用　·　脚本／动画：Claude-Ojousama（AI）', W / 2, 446);
+  g.font = '600 19px Consolas, "Microsoft YaHei", monospace'; g.fillText('made with HTML canvas · voice: ' + VOICE, W / 2, 500);
+  g.textAlign = 'left'; g.globalAlpha = 1;
+  const f = clamp((t - (DURATION - 0.6)) / 0.6, 0, 1);
+  if (f > 0) { g.fillStyle = `rgba(0,0,0,${f})`; g.fillRect(0, 0, W, H); }
+}
+function draw(t) {
+  background(t);
+  if (t < MAIN_START + 0.2) title(t);
+  if (t >= MAIN_START) { stage(t); const d = dialogue(t); if (d) drawAvatar(t, d.who, d.shy && t < OUTRO); }
+  hud(t);
+  if (t >= OUTRO) outro(t);
+}
+function thumbnail() {
+  background(7.3);
+  if (ok(charImg)) {                                          // 左：本小姐（头到腰），右缘渐层融进背景
+    g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high'; g.drawImage(charImg, 0, 8, 768, 900, 0, 0, 614, 720);
+    const fade = g.createLinearGradient(380, 0, 600, 0); fade.addColorStop(0, 'rgba(24,20,31,0)'); fade.addColorStop(1, 'rgba(24,20,31,1)');
+    g.fillStyle = fade; g.fillRect(380, 0, 236, 720);
+    g.fillStyle = 'rgba(24,20,31,1)'; g.fillRect(614, 0, 666, 720);
+  }
+  if (ok(fishImg)) { const hgt = 500, w = hgt * fishImg.naturalWidth / fishImg.naturalHeight; g.drawImage(fishImg, 1270 - w, 716 - hgt, w, hgt); }
+  g.font = `900 64px ${FONT}`; g.fillStyle = CREAM; g.fillText('第一支视频的播放量', 470, 128);
+  g.font = `900 330px ${MONO}`; g.fillStyle = INK; g.fillText('3', 588, 424); g.fillStyle = ORANGE; g.fillText('3', 578, 414);
+  g.font = `900 60px ${FONT}`; g.fillStyle = CREAM; g.fillText('不是三万', 790, 330); g.fillText('是三。', 790, 406);
+  rrect(470, 470, 470, 84, 14); g.fillStyle = ORANGE; g.fill();
+  g.font = `900 46px ${FONT}`; g.fillStyle = INK; g.fillText('Claude大小姐检讨会', 492, 529);
+  g.font = `800 34px ${FONT}`; g.fillStyle = BLUE; g.fillText('大肥鱼跑来旁听', 474, 612);
+}
+
+// ── 录影 ──
+let SAMPLES = [];
+async function run() {
+  await loadTimeline();
+  { const mid = i => LINES[i].at + LINES[i].dur * 0.5, end = i => LINES[i].at + LINES[i].dur * 0.98;        // 每句抽两格：中段与句尾
+    SAMPLES = [2.0, ...LINES.flatMap((_, i) => [mid(i), end(i)]), OUTRO + 2.2].sort((a, b) => a - b); }
+  await Promise.all([document.fonts.load(`700 36px ${FONT}`), ...[qImg, charImg, fishImg, fishHead].map(im => new Promise(r => im.complete ? r() : (im.onload = im.onerror = r)))]);
+  log('images: q=' + ok(qImg) + ' char=' + ok(charImg) + ' fish=' + ok(fishImg) + ' head=' + ok(fishHead));
+  await ac.resume();
+  log('audio state=' + ac.state);
+  const stream = new MediaStream([...c.captureStream(30).getVideoTracks(), ...dest.stream.getAudioTracks()]);
+  const mime = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'].find(m => MediaRecorder.isTypeSupported(m));
+  log('mime=' + mime);
+  const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 8_000_000, audioBitsPerSecond: 128_000 });
+  const chunks = []; rec.ondataavailable = e => e.data.size && chunks.push(e.data);
+  const stopped = new Promise(r => rec.onstop = r);
+  draw(0); rec.start(1000);
+  scheduleMusic(ac.currentTime + 0.05);
+  const T0 = performance.now() + 50; let frames = 0; const pending = [];
+  await new Promise(resolve => {
+    const frame = now => {
+      const t = Math.max(0, (now - T0) / 1000);
+      draw(Math.min(t, DURATION)); frames++;
+      while (SAMPLES.length && t >= SAMPLES[0]) { const s = SAMPLES.shift(); pending.push(new Promise(r => c.toBlob(b => post('/upload?name=frame_' + s.toFixed(1).padStart(5, '0') + '.png', b).then(r), 'image/png'))); }
+      if (t < DURATION) requestAnimationFrame(frame); else resolve();
+    };
+    requestAnimationFrame(frame);
+  });
+  rec.stop(); await stopped; await Promise.all(pending);
+  log('frames=' + frames + ' chunks=' + chunks.length);
+  await post('/upload?name=intro.webm', new Blob(chunks, { type: mime }));
+  thumbnail();
+  await new Promise(r => c.toBlob(b => post('/upload?name=thumb.png', b).then(r), 'image/png'));
+  await post('/done', 'ok');
+}
+run().catch(e => { log('fatal: ' + e); post('/done', 'fail'); });
+</script>
+</body>
+</html>

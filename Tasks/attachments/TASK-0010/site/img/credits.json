@@ -1,0 +1,93 @@
+[
+ {
+  "file": "cantino.jpg",
+  "commons": "File:Cantino planisphere (1502).jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Cantino_planisphere_(1502).jpg",
+  "license": "Public domain",
+  "artist": "anonymous Portuguese (1502)",
+  "date": "1502",
+  "credit": "Biblioteca Estense Universitaria, Modena, Italy",
+  "original_size": "10643x4998",
+  "saved_width": 2400,
+  "bytes": 2499603,
+  "sha256": "de17c4cc00dfd59f42d033cd62c650c285bf749f9f121ae93c8b26428624ea9b"
+ },
+ {
+  "file": "earth.jpg",
+  "commons": "File:Blue Marble Next Generation + topography + bathymetry.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Blue_Marble_Next_Generation_%2B_topography_%2B_bathymetry.jpg",
+  "license": "Public domain",
+  "artist": "Reto Stöckli, NASA Earth Observatory, modified by NordNordWest",
+  "date": "2004-08",
+  "credit": "https://neo.sci.gsfc.nasa.gov",
+  "original_size": "3600x1800",
+  "saved_width": 3600,
+  "bytes": 2022542,
+  "sha256": "062582f953750c05c12514b9ff498b8db5b2c68e1e0563b0bea2f3385be9f5db"
+ },
+ {
+  "file": "brookes.jpg",
+  "commons": "File:Slaveshipposter.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Slaveshipposter.jpg",
+  "license": "Public domain",
+  "artist": "Plymouth Chapter of the Society for Effecting the Abolition of the Slave Trade",
+  "date": "1788-12",
+  "credit": "This image is available from the United States Library of Congress's Prints and Photographs division under the digital ID cph.3a34658.This tag does not indicate the copyright status of the attached wo",
+  "original_size": "3952x4672",
+  "saved_width": 1600,
+  "bytes": 1335947,
+  "sha256": "f39ebdceb53c0447bb806a13664cbce2ed20d9be0e492e2a551e555fabb3065e"
+ },
+ {
+  "file": "antigua.jpg",
+  "commons": "File:Slaves working on a plantation - Ten Views in the Island of Antigua (1823), plate III - BL.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Slaves_working_on_a_plantation_-_Ten_Views_in_the_Island_of_Antigua_(1823),_plate_III_-_BL.jpg",
+  "license": "CC0",
+  "artist": "William Clark",
+  "date": "1823date QS:P571,+1823-00-00T00:00:00Z/9",
+  "credit": "This file has been provided by the British Library from its digital collections. Links to the British Library's website may be broken as the library recovers from a October 2023 cyber attack, and will",
+  "original_size": "1994x1392",
+  "saved_width": 1600,
+  "bytes": 597046,
+  "sha256": "193282f7b93bd20f5362d08dfd63a68fcbaad9492a00139b89659155c01a078b"
+ },
+ {
+  "file": "equiano.jpg",
+  "commons": "File:Olaudah Equiano - The interesting Narrative of the Life of Olaudah Equiano (1789), frontispiece - BL.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Olaudah_Equiano_-_The_interesting_Narrative_of_the_Life_of_Olaudah_Equiano_(1789),_frontispiece_-_BL.jpg",
+  "license": "CC0",
+  "artist": "Creator:W Dent Creator:D Orme",
+  "date": "1789date QS:P571,+1789-00-00T00:00:00Z/9",
+  "credit": "This file has been provided by the British Library from its digital collections. Links to the British Library's website may be broken as the library recovers from a October 2023 cyber attack, and will",
+  "original_size": "1071x1785",
+  "saved_width": 900,
+  "bytes": 518852,
+  "sha256": "12128033eedb58ad1a86c3248af643a4ca788c75eb955e29001d5bf4ed3ffa5c"
+ },
+ {
+  "file": "elmina.jpg",
+  "commons": "File:ElMina AtlasBlaeuvanderHem.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:ElMina_AtlasBlaeuvanderHem.jpg",
+  "license": "Public domain",
+  "artist": "Johannes Vingboons",
+  "date": "between 1665 and 1668date QS:P,+1665-00-00T00:00:00Z/8,P1319,+1665-00-00T00:00:0",
+  "credit": "Atlas Blaeu - Van der Hem , vol. 36:19, fol. 62 - 63, (16), Austrian National Library (http://data.onb.ac.at/rec/baa13770845)",
+  "original_size": "2347x1772",
+  "saved_width": 1600,
+  "bytes": 808591,
+  "sha256": "48a37794b28f2741ae89d355aa64f532b916d1f433a304afd9ac04f2ce58ac45"
+ },
+ {
+  "file": "ship.jpg",
+  "commons": "File:A British Slave Ship, by William Jackson, c. 1780, Royal Museums Greenwich.jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:A_British_Slave_Ship,_by_William_Jackson,_c._1780,_Royal_Museums_Greenwich.jpg",
+  "license": "Public domain",
+  "artist": "Jackson of Exeter",
+  "date": "circa 1780date QS:P571,+1780-00-00T00:00:00Z/9,P1480,Q5727902",
+  "credit": "http://collections.rmg.co.uk/collections/objects/254222",
+  "original_size": "3800x2835",
+  "saved_width": 1600,
+  "bytes": 1247155,
+  "sha256": "d2cd888f340e2cf299d8cada29a76c921ba70323ac83451561b29dc432683ffa"
+ }
+]

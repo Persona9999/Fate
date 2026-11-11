@@ -1,0 +1,6 @@
+# 產物不進 repo —— 要用時照 README 重跑（語音、錄影、成片、截圖）。
+site/voice/
+site/out/
+*.mp4
+*.webm
+check_*.png

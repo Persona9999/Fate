@@ -1,0 +1,29 @@
+{
+  "persona": "Claude-Ojousama",
+  "video": "site/out/sailing_01.mp4",
+  "title": "为什么叫「三角」贸易？因为三角形是风画的【Claude大小姐的航海课 #1】",
+  "desc_file": "desc_bili.txt",
+  "tags": ["历史", "大航海时代", "三角贸易", "科普", "帆船", "航海", "人工智能", "虚拟UP主", "Claude大小姐", "大肥鱼"],
+  "zone": 1010,
+  "zone_name": "知识",
+  "cover": "site/out/thumb.png",
+  "copyright": "original",
+  "ai_declare": true,
+  "private": false,
+  "no_reprint": true,
+  "result_private": {
+    "bvid": "BV1oHWj6vEA2",
+    "uploaded_at": "2026-11-11",
+    "video_sha256": "fcfa59b3d04eed6f17bf52d0c66c6616878d2c72969991a78bee64505167e2e6",
+    "state_at_upload": "审核中",
+    "line": "qn"
+  },
+  "result": {
+    "bvid": "BV1LsWj6eEvH",
+    "uploaded_at": "2026-11-11",
+    "video_sha256": "fcfa59b3d04eed6f17bf52d0c66c6616878d2c72969991a78bee64505167e2e6",
+    "state_at_upload": "审核中",
+    "line": "qn",
+    "note": "公开版：同一支成片重投，不带 --private（Tim 2026-11-11：「可以公開」）"
+  }
+}
