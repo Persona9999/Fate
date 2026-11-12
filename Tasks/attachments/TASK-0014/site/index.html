@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>黑洞模擬</title>
+<style>
+  :root { --panel: rgba(12,14,22,.80); --line: rgba(255,255,255,.11); --txt: #e8eaf0; --dim: #9aa3b5; --acc: #ffb454; }
+  html, body { margin: 0; height: 100%; background: #000; color: var(--txt); overflow: hidden;
+    font-family: "Microsoft JhengHei", "Noto Sans TC", "PingFang TC", system-ui, sans-serif; font-size: 13px; }
+  #view { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+  #view:active { cursor: grabbing; }
+  .box { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; backdrop-filter: blur(6px); }
+  #panel { position: fixed; left: 10px; top: 10px; bottom: 10px; width: 300px; overflow-y: auto; padding: 10px 12px; box-sizing: border-box; scrollbar-width: thin; }
+  #panel.closed { bottom: auto; height: 44px; overflow: hidden; }
+  #panel h1 { font-size: 16px; margin: 0 0 8px; display: flex; justify-content: space-between; align-items: center; letter-spacing: .08em; }
+  #panel h1 button { width: 30px; padding: 2px 0; }
+  .scenes { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; margin-bottom: 8px; }
+  .scenes button { padding: 7px 2px; font-size: 12px; white-space: nowrap; }
+  button { background: rgba(255,255,255,.08); color: var(--txt); border: 1px solid var(--line); border-radius: 7px; padding: 6px 8px; font: inherit; cursor: pointer; }
+  button:hover { background: rgba(255,255,255,.16); }
+  button.on { background: rgba(255,180,84,.24); border-color: var(--acc); }
+  button.big { width: 100%; padding: 9px; font-size: 14px; background: rgba(255,180,84,.20); border-color: var(--acc); margin: 6px 0 2px; }
+  details { border-top: 1px solid var(--line); padding: 6px 0 4px; }
+  summary { cursor: pointer; font-weight: 600; color: var(--acc); padding: 2px 0 5px; }
+  .ctl { display: grid; grid-template-columns: 74px 1fr 78px; align-items: center; gap: 6px; margin: 3px 0; }
+  .ctl .lab { color: var(--dim); }
+  .ctl output { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  input[type=range] { width: 100%; accent-color: var(--acc); margin: 0; }
+  .chk { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
+  .chk input { accent-color: var(--acc); }
+  .btnrow { display: flex; flex-wrap: wrap; gap: 5px; margin: 5px 0; }
+  .btnrow button { flex: 1 1 auto; padding: 5px 6px; }
+  .note { color: var(--dim); font-size: 12px; line-height: 1.5; margin: 4px 0; }
+  .note b { color: var(--txt); font-weight: 600; }
+  select { background: #1a1e2b; color: var(--txt); border: 1px solid var(--line); border-radius: 6px; padding: 3px 4px; font: inherit; max-width: 100%; }
+  #hud { position: fixed; right: 10px; top: 10px; width: 310px; padding: 9px 12px; box-sizing: border-box; line-height: 1.65; font-variant-numeric: tabular-nums; }
+  #hud .k { color: var(--dim); display: inline-block; width: 92px; }
+  #hud .small { color: var(--dim); font-size: 11px; }
+  #hud .bodies { margin-top: 6px; font-size: 12px; max-height: 32vh; overflow-y: auto; }
+  #hud .body { border-top: 1px solid var(--line); padding: 2px 0; line-height: 1.45; }
+  #hud .body .small { padding-left: 14px; }
+  #hud .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 4px; }
+  #mapwrap { position: fixed; right: 10px; bottom: 10px; width: 310px; height: 310px; overflow: hidden; }
+  #mapwrap.big { width: min(620px, 60vw); height: min(620px, 70vh); }
+  #map { width: 100%; height: 100%; display: block; touch-action: none; cursor: crosshair; }
+  #mapwrap .tools { position: absolute; right: 6px; top: 5px; display: flex; gap: 4px; }
+  #mapwrap .tools button { padding: 1px 7px; font-size: 12px; }
+  #caption { position: fixed; left: 322px; right: 332px; bottom: 12px; padding: 9px 14px; line-height: 1.65; max-width: 760px; margin: 0 auto; }
+  #caption b { color: var(--acc); }
+  #toast { position: fixed; left: 50%; top: 16px; transform: translateX(-50%); padding: 7px 16px; opacity: 0; transition: opacity .4s; pointer-events: none; }
+  #toast.show { opacity: 1; }
+  #overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.55); }
+  #overlay.show { display: flex; }
+  #overlay .box { padding: 22px 28px; max-width: 520px; line-height: 1.8; font-size: 14px; }
+  #overlay h2 { margin: 0 0 8px; color: var(--acc); font-size: 18px; }
+  #selftest { position: fixed; inset: 10px; display: none; overflow: auto; padding: 14px 18px; z-index: 9; }
+  #selftest.show { display: block; }
+  #selftest pre { margin: 0; font: 12.5px/1.55 Consolas, "Cascadia Mono", monospace; white-space: pre-wrap; }
+  #fatal { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; padding: 30px; font-size: 15px; white-space: pre-wrap; }
+  @media (max-width: 900px) {
+    #caption { display: none; }
+    #hud { width: 230px; font-size: 12px; }
+    #mapwrap { width: 200px; height: 200px; }
+  }
+</style>
+</head>
+<body>
+<canvas id="view"></canvas>
+
+<div id="panel" class="box">
+  <h1><span>黑洞模擬</span><button id="panelToggle" title="收合／展開">≡</button></h1>
+  <div class="scenes">
+    <button data-scene="bend">① 光線彎曲</button>
+    <button data-scene="drop">② 物體掉入</button>
+    <button data-scene="fall">③ 自己掉入</button>
+  </div>
+  <div class="btnrow" id="quick"></div>
+  <div id="sections"></div>
+  <div class="note" style="margin-top:8px">滑鼠：拖曳＝繞著黑洞轉（落下時＝轉頭）；Shift 或右鍵拖曳＝轉頭；滾輪＝遠近（落下時＝視角）；按兩下＝看回黑洞。<br>鍵盤：空白鍵暫停、1 2 3 換場景、G 參考格線開關、L 發射、F 落下、H 懸停。</div>
+</div>
+
+<div id="hud" class="box"></div>
+<div id="caption" class="box"></div>
+<div id="mapwrap" class="box">
+  <canvas id="map"></canvas>
+  <div class="tools"><button id="mapBeams" title="示範光束">光束</button><button id="mapSize" title="放大／縮小">⤢</button></div>
+</div>
+<div id="toast" class="box"></div>
+<div id="overlay"><div class="box"><h2 id="ovTitle"></h2><div id="ovText"></div><div class="btnrow" style="margin-top:12px"><button id="ovAgain">再掉一次</button><button id="ovBack">回到外面</button></div></div></div>
+<div id="selftest" class="box"><pre id="selftestText">自我測試執行中…</pre></div>
+<div id="fatal"></div>
+
+<script src="js/physics.js"></script>
+<script src="js/selftest.js"></script>
+<script src="js/shader.js"></script>
+<script src="js/renderer.js"></script>
+<script src="js/camera.js"></script>
+<script src="js/bodies.js"></script>
+<script src="js/map2d.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
