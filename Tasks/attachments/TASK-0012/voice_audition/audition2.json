@@ -1,0 +1,79 @@
+{
+ "fish": [
+  "zh-CN-XiaoyiNeural",
+  "+12%",
+  "+18Hz",
+  "那是不是只有有质量的东西，才能把时空压弯呀？"
+ ],
+ "ojousama": [
+  "fr-FR-VivienneMultilingualNeural",
+  "+10%",
+  "+8Hz",
+  "实锤。爱因斯坦场方程的右边，写的就是能量和动量。……哼，才不是特地为你盖的呢。"
+ ],
+ "gemini_candidates": [
+  {
+   "code": "H1",
+   "voice": "zh-CN-XiaoyiNeural",
+   "rate": "+10%",
+   "pitch": "+6Hz",
+   "note": "比大肥魚低一點、慢一點",
+   "dur": 9.98,
+   "mean_db": -21.5
+  },
+  {
+   "code": "H2",
+   "voice": "zh-CN-XiaoyiNeural",
+   "rate": "+8%",
+   "pitch": "-4Hz",
+   "note": "接近原本的音高，稍快",
+   "dur": 10.17,
+   "mean_db": -21.5
+  },
+  {
+   "code": "H3",
+   "voice": "zh-CN-XiaoyiNeural",
+   "rate": "+6%",
+   "pitch": "-14Hz",
+   "note": "明顯壓低：比較像姐姐",
+   "dur": 10.35,
+   "mean_db": -21.5
+  },
+  {
+   "code": "H4",
+   "voice": "zh-CN-XiaoyiNeural",
+   "rate": "+2%",
+   "pitch": "-24Hz",
+   "note": "壓得更低、放慢：沉穩",
+   "dur": 10.76,
+   "mean_db": -21.5
+  },
+  {
+   "code": "H5",
+   "voice": "zh-CN-XiaoyiNeural",
+   "rate": "+16%",
+   "pitch": "-8Hz",
+   "note": "壓低但講得快：急性子",
+   "dur": 9.47,
+   "mean_db": -21.6
+  },
+  {
+   "code": "H6",
+   "voice": "zh-CN-XiaoyiNeural",
+   "rate": "+14%",
+   "pitch": "+30Hz",
+   "note": "比大肥魚還高、還快",
+   "dur": 9.64,
+   "mean_db": -21.6
+  },
+  {
+   "code": "H7",
+   "voice": "zh-CN-XiaoyiNeural",
+   "rate": "+0%",
+   "pitch": "+10Hz",
+   "note": "音高接近大肥魚，但放慢",
+   "dur": 10.98,
+   "mean_db": -21.6
+  }
+ ]
+}

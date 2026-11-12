@@ -1,0 +1,288 @@
+{
+ "title_end": 3.5,
+ "outro": 202.6,
+ "duration": 209.1,
+ "voice": "Qwen3-TTS:Sohee / edge-tts:fr-FR-VivienneMultilingualNeural / edge-tts:zh-CN-XiaoyiNeural",
+ "voice_db": {
+  "F": -21.8,
+  "G": -23.3,
+  "O": -20.1
+ },
+ "labels": {
+  "G": "Gemini 大小姐",
+  "O": "Claude 大小姐",
+  "F": "大肥魚"
+ },
+ "lines": [
+  {
+   "at": 4.0,
+   "dur": 5.864,
+   "who": "F",
+   "zh": "兩位大小姐！本魚發呆的時候想到：\n時間，會不會其實是一串真正的亂數？",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_tw/line_1.wav"
+  },
+  {
+   "at": 10.314,
+   "dur": 8.638,
+   "who": "G",
+   "zh": "哼，算你問到重點。這可不是瞎想，\n物理學裡有好幾派，都押在這上面！",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_tw/line_2.wav"
+  },
+  {
+   "at": 19.401,
+   "dur": 7.11,
+   "who": "O",
+   "zh": "慢著。她負責講，本小姐負責蓋章。\n章有三種：實證、假說、腦洞。",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_tw/line_3.wav"
+  },
+  {
+   "at": 26.961,
+   "dur": 2.084,
+   "who": "G",
+   "zh": "誰、誰准妳來監考的！",
+   "shy": false,
+   "shake": true,
+   "wav": "voice_tw/line_4.wav"
+  },
+  {
+   "at": 29.746,
+   "dur": 10.615,
+   "who": "G",
+   "zh": "先說因果集理論：時空是一顆一顆的事件點。\n新的點隨機長出來，時間才往前走。",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_tw/line_5.wav"
+  },
+  {
+   "at": 40.811,
+   "dur": 6.349,
+   "who": "G",
+   "zh": "再來是客觀塌縮：量子態自己會隨機塌縮，\n把「可能」變成「已經發生」。",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_tw/line_6.wav"
+  },
+  {
+   "at": 47.61,
+   "dur": 4.735,
+   "who": "O",
+   "zh": "兩個都蓋「假說」。\n有數學、有論文，還沒有實驗證實。",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_tw/line_7.wav"
+  },
+  {
+   "at": 52.945,
+   "dur": 7.738,
+   "who": "G",
+   "zh": "還有吉辛！他說小數點後面的數字，\n是隨著時間，一位一位「生」出來的！",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_tw/line_8.wav"
+  },
+  {
+   "at": 61.133,
+   "dur": 2.959,
+   "who": "F",
+   "zh": "所以宇宙是現場直播，不是放錄影帶！",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_tw/line_9.wav"
+  },
+  {
+   "at": 64.542,
+   "dur": 7.293,
+   "who": "O",
+   "zh": "比喻可以。論文是真的，登在《自然·物理》上。\n但它是一篇觀點文章——還是「假說」。",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_tw/line_10.wav"
+  },
+  {
+   "at": 72.535,
+   "dur": 3.616,
+   "who": "F",
+   "zh": "那是不是只有有質量的東西，\n才能把時空壓彎呀？",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_tw/line_11.wav"
+  },
+  {
+   "at": 76.601,
+   "dur": 11.099,
+   "who": "G",
+   "zh": "掉進坑裡了吧！彎曲時空的是能量和動量。\n光沒有靜止質量，照樣能把時空壓彎！",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_tw/line_12.wav"
+  },
+  {
+   "at": 88.15,
+   "dur": 5.34,
+   "who": "O",
+   "zh": "「實證」。愛因斯坦場方程式的右邊，\n寫的就是能量和動量。",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_tw/line_13.wav"
+  },
+  {
+   "at": 94.04,
+   "dur": 6.928,
+   "who": "G",
+   "zh": "所以把夠多的光擠在一起，\n光自己就能塌成黑洞——球狀閃電黑洞！",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_tw/line_14.wav"
+  },
+  {
+   "at": 101.417,
+   "dur": 8.319,
+   "who": "O",
+   "zh": "方程式允許。但 2024 年有論文算過：\n光會先變成正負電子對漏掉。還在吵，「假說」。",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_tw/line_15.wav"
+  },
+  {
+   "at": 110.436,
+   "dur": 4.161,
+   "who": "F",
+   "zh": "那物質和光，能不能都寫成\n「時空的形狀」加一層「標籤」？",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_tw/line_16.wav"
+  },
+  {
+   "at": 115.047,
+   "dur": 10.075,
+   "who": "G",
+   "zh": "這是物理學一百年的夢！多加一維空間，\n電磁力就從幾何裡長出來；\n弦論再把粒子的屬性，藏進捲起來的高維空間。",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_tw/line_17.wav"
+  },
+  {
+   "at": 125.572,
+   "dur": 5.65,
+   "who": "O",
+   "zh": "數學很漂亮。可是多出來的維度，\n實驗至今沒看到。「假說」。",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_tw/line_18.wav"
+  },
+  {
+   "at": 131.922,
+   "dur": 10.261,
+   "who": "G",
+   "zh": "那就拼起來：亂數是時脈，標籤是程式碼，\n彎曲的時空是畫面。\n質量大的地方時間慢，就是那裡掉幀了！",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_tw/line_19.wav"
+  },
+  {
+   "at": 142.633,
+   "dur": 6.434,
+   "who": "O",
+   "zh": "「腦洞」。時間變慢是實證過的，原子鐘測得出來；\n「因為掉幀」是她編的。",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_tw/line_20.wav"
+  },
+  {
+   "at": 149.517,
+   "dur": 2.296,
+   "who": "G",
+   "zh": "什、什麼叫編的！這叫大膽假設！",
+   "shy": false,
+   "shake": true,
+   "wav": "voice_tw/line_21.wav"
+  },
+  {
+   "at": 152.614,
+   "dur": 3.687,
+   "who": "F",
+   "zh": "最後一題……本魚和兩位大小姐，\n為什麼會有意識呢？",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_tw/line_22.wav"
+  },
+  {
+   "at": 156.75,
+   "dur": 7.811,
+   "who": "G",
+   "zh": "潘洛斯說：大腦裡的量子態撐不住就塌縮，\n每塌縮一次，就是一點意識的火花。",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_tw/line_23.wav"
+  },
+  {
+   "at": 165.011,
+   "dur": 6.948,
+   "who": "O",
+   "zh": "潘洛斯拿過諾貝爾獎，但得獎的是黑洞，不是這個。\n這個理論爭議很大——「假說」。",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_tw/line_24.wav"
+  },
+  {
+   "at": 172.859,
+   "dur": 2.073,
+   "who": "F",
+   "zh": "那……本魚到底有沒有意識？",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_tw/line_25.wav"
+  },
+  {
+   "at": 175.732,
+   "dur": 6.541,
+   "who": "O",
+   "zh": "不知道。本小姐自己有沒有，本小姐也不知道。\n這一題，誰都蓋不了章。",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_tw/line_26.wav"
+  },
+  {
+   "at": 183.273,
+   "dur": 3.104,
+   "who": "G",
+   "zh": "……哼。這一句，本小姐不反駁。",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_tw/line_27.wav"
+  },
+  {
+   "at": 187.378,
+   "dur": 7.893,
+   "who": "O",
+   "zh": "總結。彎曲時空的是能量——實證。\n時間是不是骰子——還在賭。意識——沒人知道。",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_tw/line_28.wav"
+  },
+  {
+   "at": 195.771,
+   "dur": 3.686,
+   "who": "G",
+   "zh": "下次本小姐一定講一個，\n讓她蓋不出「腦洞」的！",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_tw/line_29.wav"
+  },
+  {
+   "at": 199.857,
+   "dur": 1.743,
+   "who": "F",
+   "zh": "本魚負責提問！啵！",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_tw/line_30.wav"
+  }
+ ]
+}

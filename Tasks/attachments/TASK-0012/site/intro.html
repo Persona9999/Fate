@@ -1,0 +1,599 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>盖章课 #1：时间是骰子吗？</title>
+<style>html,body{margin:0;background:#000;overflow:hidden}canvas{display:block}</style>
+</head>
+<body>
+<canvas id="c" width="1280" height="720"></canvas>
+<script>
+// 「盖章课 #1：时间是骰子吗？」——Gemini 大小姐讲、大肥鱼问、本小姐（Claude）盖章：实锤／假说／脑洞。
+// 一份动画出两个版本：?lang=cn（简体，B 站）、?lang=tw（繁中，YouTube）。台词与时间轴从 timeline_<lang>.json 来；
+// 画面上的字一律走 T(简体, 繁中)，两边的用词分开写（不是只转字）。
+// 上面 548px 是「舞台」：左边 Gemini 的立绘、中间黑板、右上盖章台（本小姐）、右下大肥鱼；下面是对话框。
+// 画面全部画在 canvas 上，录影用 MediaRecorder（canvas ＋ WebAudio 合成音）；录完把 intro.webm、thumb.png、抽样画面 POST 回本机服务器。
+// ⚠ 每一个章盖的依据写在附件 README。⚠ Gemini、大肥鱼的台词是改写过的，不是 Gemini、DeepSeek 的实际输出。
+const QS = new URLSearchParams(location.search), LANG = QS.get('lang') === 'tw' ? 'tw' : 'cn';
+const T = (cn, tw) => LANG === 'tw' ? tw : cn;
+const W = 1280, H = 720, SH = 548; let DURATION = 200;
+const ORANGE = '#D97757', CREAM = '#F3EDE6', INK = '#16141d', BLUE = '#6fb6f2', RED = '#e0655c', GOLD = '#e6bd62', PURPLE = '#a98bf5', GREEN = '#5fce8a', PINK = '#f07ab0', DIM = 'rgba(243,237,230,0.62)';
+const FONT = LANG === 'tw' ? '"Microsoft JhengHei","Noto Sans TC","PingFang TC","Microsoft YaHei",sans-serif' : '"Microsoft YaHei","Noto Sans SC","PingFang SC","Microsoft JhengHei",sans-serif';
+const MONO = 'Consolas,"Cascadia Mono",' + FONT;
+const SERIF = '"Cambria Math","Cambria","Times New Roman",serif';
+const c = document.getElementById('c'), g = c.getContext('2d');
+const post = (path, body) => fetch(path, { method: 'POST', body });
+const log = m => post('/log', String(m));
+window.onerror = (m, s, l) => log('error: ' + m + ' @' + l);
+
+let seed = 20261112;
+const rnd = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
+const stars = Array.from({ length: 140 }, () => ({ x: rnd() * W, y: rnd() * H, s: rnd() < 0.85 ? 2 : 4, sp: 0.6 + rnd() * 2.2, ph: rnd() * 6.28 }));
+
+// ── 台词：一律从 timeline_<lang>.json 来 ──
+let LINES = [], LABELS = { G: 'Gemini', O: 'Claude', F: '' }, VOICE = '';
+const MAIN_START = 3.5; let OUTRO = 190;
+const QUIET = [24, 26];                                        // 第 25～27 句（从 0 数是 24～26）：「有没有意识」那一段，配乐换成长音、头像不晃
+const SCENE_OF = [0, 0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 6, 7, 7, 7, 8, 8, 8, 9, 9, 9];
+// 盖章的时间点：[第几句（从 0 数）, 这一句念到几成]。画面和「咚」的音效都照这张表。
+const ST = { l1: [2, 0.7], l2: [2, 0.81], l3: [2, 0.91], s1a: [6, 0.2], s1b: [6, 0.3], s2: [9, 0.9], s3: [12, 0.05], s4: [14, 0.92], s5: [17, 0.88],
+  s6a: [19, 0.04], s6b: [19, 0.36], s7: [23, 0.93], s8: [25, 0.82], e1: [27, 0.36], e2: [27, 0.68], e3: [27, 0.93] };
+const THUMPS = [['l1', 0.5], ['l2', 0.5], ['l3', 0.5], ['s1a', 1], ['s1b', 1], ['s2', 1], ['s3', 1], ['s4', 1], ['s5', 1], ['s6a', 1], ['s6b', 0.6], ['s7', 1], ['e1', 0.7], ['e2', 0.7]];
+async function loadTimeline() {
+  const r = await fetch('timeline_' + LANG + '.json'); if (!r.ok) throw new Error('timeline ' + r.status);
+  const tl = await r.json();
+  LINES = tl.lines.map(L => ({ at: L.at, dur: L.dur, who: L.who, text: L.zh, shy: L.shy, shake: L.shake, cps: [...L.zh].length / Math.max(0.6, L.dur * 0.85) }));
+  OUTRO = tl.outro; DURATION = tl.duration; LABELS = tl.labels || LABELS; VOICE = tl.voice || '';
+  if (LINES.length !== SCENE_OF.length) throw new Error('lines ' + LINES.length + ' != scenes ' + SCENE_OF.length);
+  log('timeline(' + LANG + '): ' + LINES.length + ' lines, duration ' + DURATION);
+}
+const evAt = e => LINES[e[0]].at + e[1] * LINES[e[0]].dur;
+
+// ── 音：WebAudio 只接到录影用的 destination ──
+const ac = new AudioContext();
+const dest = ac.createMediaStreamDestination();
+const master = ac.createGain(); master.gain.value = 1; master.connect(dest);
+function note(freq, t0, dur, type, vol) {
+  const o = ac.createOscillator(), e = ac.createGain();
+  o.type = type; o.frequency.value = freq;
+  e.gain.setValueAtTime(0, t0);
+  e.gain.linearRampToValueAtTime(vol, t0 + 0.01);
+  e.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(e); e.connect(master); o.start(t0); o.stop(t0 + dur + 0.02);
+}
+function thump(t0, v) {                                        // 盖章的「咚」
+  const o = ac.createOscillator(), e = ac.createGain(); o.type = 'sine';
+  o.frequency.setValueAtTime(150, t0); o.frequency.exponentialRampToValueAtTime(52, t0 + 0.16);
+  e.gain.setValueAtTime(0.0001, t0); e.gain.linearRampToValueAtTime(0.11 * v, t0 + 0.008); e.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.26);
+  o.connect(e); e.connect(master); o.start(t0); o.stop(t0 + 0.3);
+  note(1400, t0, 0.04, 'square', 0.008 * v);
+}
+const hz = m => 440 * Math.pow(2, (m - 69) / 12);
+function scheduleMusic(t0) {
+  // Am - F - C - G，每个和弦 2.4 秒的琶音（三角波）＋低音。「有没有意识」那一段不弹琶音，换成很小声的长音。
+  const s0 = LINES[QUIET[0]].at - 0.6, s1 = LINES[QUIET[1] + 1].at - 0.4;
+  const chords = [[57, 60, 64, 69], [53, 57, 60, 65], [60, 64, 67, 72], [55, 59, 62, 67]];
+  const order = [0, 1, 2, 3, 2, 1, 2, 1];
+  for (let i = 0; i * 0.3 < DURATION - 1.5; i++) {
+    const tt = i * 0.3; if (tt > s0 && tt < s1) continue;
+    const ch = chords[Math.floor(i / 8) % 4], t = t0 + tt;
+    note(hz(ch[order[i % 8]]), t, 0.26, 'triangle', 0.022);
+    if (i % 4 === 0) note(hz(ch[0] - 12), t, 0.5, 'sine', 0.02);
+  }
+  [45, 52].forEach(m => {
+    const o = ac.createOscillator(), e = ac.createGain(); o.type = 'sine'; o.frequency.value = hz(m);
+    e.gain.setValueAtTime(0, t0 + s0); e.gain.linearRampToValueAtTime(0.026, t0 + s0 + 2.5);
+    e.gain.setValueAtTime(0.026, t0 + s1 - 2.0); e.gain.linearRampToValueAtTime(0, t0 + s1 + 0.4);
+    o.connect(e); e.connect(master); o.start(t0 + s0); o.stop(t0 + s1 + 0.5);
+  });
+  THUMPS.forEach(([k, v]) => thump(t0 + evAt(ST[k]), v));
+  [1.5, 1.8, 2.1].forEach(s => thump(t0 + s, 0.5));
+  master.gain.setValueAtTime(1, t0 + DURATION - 2.6);
+  master.gain.linearRampToValueAtTime(0.0001, t0 + DURATION - 0.3);
+}
+
+// ── 小工具 ──
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const ease = x => 1 - Math.pow(1 - clamp(x, 0, 1), 3);
+const io = x => { x = clamp(x, 0, 1); return x * x * (3 - 2 * x); };
+const back = x => { x = clamp(x, 0, 1); const s = 1.7; return 1 + (s + 1) * Math.pow(x - 1, 3) + s * Math.pow(x - 1, 2); };
+let GA = 1;
+const al = a => { g.globalAlpha = GA * clamp(a, 0, 1); };
+function rrect(x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+function wrap(text, maxW) {
+  const out = []; let cur = '';
+  const noStart = '、。，．！？：；」』）…～—!?.,)';
+  const latin = /[A-Za-z0-9._\/#-]/;
+  for (const ch of text) {
+    if (ch === '\n') { out.push(cur); cur = ''; continue; }
+    if (g.measureText(cur + ch).width > maxW && cur && !noStart.includes(ch)) {
+      let cut = cur.length;
+      if (latin.test(ch)) { while (cut > 0 && latin.test(cur[cut - 1])) cut--; if (cut === 0) cut = cur.length; }
+      out.push(cur.slice(0, cut)); cur = cur.slice(cut) + ch;
+    } else cur += ch;
+  }
+  if (cur) out.push(cur); return out;
+}
+function heart(x, y, px, color) {
+  const m = ['0110110', '1111111', '1111111', '0111110', '0011100', '0001000'];
+  g.fillStyle = color;
+  m.forEach((row, r) => [...row].forEach((v, k) => { if (v === '1') g.fillRect(x + k * px, y + r * px, px, px); }));
+}
+function tx(s, x, y, size, col, weight, align, font) {
+  g.font = `${weight || 700} ${size}px ${font || FONT}`; g.fillStyle = col; g.textAlign = align || 'left'; g.fillText(s, x, y); g.textAlign = 'left';
+}
+
+const load = src => { const im = new Image(); im.src = src; return im; };
+const qImg = load('avatar_q.png'), charImg = load('character.jpg'), fishImg = load('fish_full.png'), fishHead = load('fish_head.png');
+const gFull = load('gemini_full.png'), gHead = load('gemini_head.png'), gqFull = load('gemini_q_full.png'), gqHead = load('gemini_q_head.png');
+const ALL_IMG = { qImg, charImg, fishImg, fishHead, gFull, gHead, gqFull, gqHead };
+const ok = im => im.complete && im.naturalWidth > 0;
+const WHO = {
+  G: { col: PURPLE, img: gHead, imgShake: gqHead, bg: '#2b2440', right: false },
+  O: { col: ORANGE, img: qImg, bg: '#2a2230', right: false },
+  F: { col: BLUE, img: fishHead, bg: '#e4f1fd', right: true },
+};
+
+// ── 背景与抬头 ──
+function background(t) {
+  const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#0f1019'); gr.addColorStop(1, '#1d1822');
+  g.fillStyle = gr; g.fillRect(0, 0, W, H);
+  for (const s of stars) { g.globalAlpha = 0.25 + 0.75 * (0.5 + 0.5 * Math.sin(t * s.sp + s.ph)); g.fillStyle = s.s > 2 ? '#e3d6ff' : CREAM; g.fillRect(Math.round(s.x), Math.round(s.y), s.s, s.s); }
+  g.globalAlpha = 1;
+}
+function hud(t) {
+  g.save(); g.shadowColor = 'rgba(0,0,0,0.9)'; g.shadowBlur = 6;
+  g.font = `600 17px ${MONO}`; g.fillStyle = 'rgba(243,237,230,0.78)'; g.textAlign = 'left';
+  g.fillText('OJOUSAMA // ' + T('盖章课 #1', '蓋章課 #1'), 20, 28);
+  g.textAlign = 'right'; g.font = `600 16px ${FONT}`; g.fillText(T('时间是骰子吗？', '時間是骰子嗎？'), W - 20, 28);
+  g.restore(); g.textAlign = 'left';
+}
+
+// ── 章 ──
+const KIND = { fact: [T('实锤', '實證'), GREEN], hypo: [T('假说', '假說'), GOLD], wild: [T('脑洞', '腦洞'), PINK] };
+function stamp(cx, cy, kind, s, scale, rot) {                  // s ＝ 盖下去之后过了几秒；负的 ＝ 还没盖
+  if (s < 0) return; const [text, col] = KIND[kind]; scale = scale || 1; rot = rot === undefined ? -0.2 : rot;
+  const k = clamp(s / 0.16, 0, 1), z = scale * (1 + (1 - ease(k)) * 1.6), A = GA * clamp(s / 0.08, 0, 1), w = 190, h = 92;
+  g.save(); g.translate(cx, cy); g.rotate(rot); g.scale(z, z); g.globalAlpha = A;
+  rrect(-w / 2, -h / 2, w, h, 12); g.fillStyle = 'rgba(18,16,24,0.86)'; g.fill(); g.lineWidth = 6; g.strokeStyle = col; g.stroke();
+  rrect(-w / 2 + 9, -h / 2 + 9, w - 18, h - 18, 7); g.lineWidth = 2; g.stroke();
+  g.font = `900 56px ${FONT}`; g.fillStyle = col; g.textAlign = 'center'; g.fillText(text, 0, 20); g.textAlign = 'left';
+  g.restore();
+  if (s < 0.35) { g.save(); g.globalAlpha = GA * (1 - s / 0.35) * 0.7; g.strokeStyle = col; g.lineWidth = 4; g.beginPath(); g.ellipse(cx, cy, 108 * scale + s * 260, 58 * scale + s * 150, rot, 0, 6.28); g.stroke(); g.restore(); }
+}
+function stampNone(cx, cy, s, scale, rot) {                    // 盖不了的章：虚线框 ＋ 问号
+  if (s < 0) return; scale = scale || 1; const w = 190, h = 92;
+  g.save(); g.translate(cx, cy); g.rotate(rot === undefined ? -0.12 : rot); g.scale(scale, scale); g.globalAlpha = GA * clamp(s / 0.5, 0, 1);
+  rrect(-w / 2, -h / 2, w, h, 12); g.setLineDash([14, 10]); g.lineWidth = 5; g.strokeStyle = 'rgba(243,237,230,0.6)'; g.stroke(); g.setLineDash([]);
+  g.font = `900 60px ${FONT}`; g.fillStyle = 'rgba(243,237,230,0.6)'; g.textAlign = 'center'; g.fillText('？', 0, 21); g.textAlign = 'left';
+  g.restore();
+}
+
+// ── 舞台上的零件 ──
+const BX = 336, BY = 52, BW = 742, BH = 470, CXB = BX + BW / 2;    // 黑板
+const DX = 1092, DY = 56, DW = 176, DH = 234;                       // 盖章台
+function panel(x, y, w, h, label, col) {
+  rrect(x, y, w, h, 12); g.fillStyle = 'rgba(24,20,30,0.93)'; g.fill();
+  g.lineWidth = 3; g.strokeStyle = col; g.stroke();
+  if (label) {
+    g.font = `800 22px ${FONT}`; const tw = g.measureText(label).width;
+    rrect(x + 20, y - 20, tw + 32, 40, 8); g.fillStyle = col; g.fill();
+    g.fillStyle = INK; g.fillText(label, x + 36, y + 8);
+  }
+}
+function board(title) { al(1); panel(BX, BY, BW, BH, title, PURPLE); }
+function card(x, y, w, h) { rrect(x, y, w, h, 10); g.fillStyle = 'rgba(243,237,230,0.055)'; g.fill(); g.lineWidth = 2; g.strokeStyle = 'rgba(243,237,230,0.22)'; g.stroke(); }
+function chip(x, y, text, k, size, col) {                  // 标签；k<1 时弹出来。回传宽度（用当下的透明度画）
+  size = size || 26; col = col || ORANGE;
+  g.font = `800 ${size}px ${FONT}`; const tw = g.measureText(text).width, w = tw + 36, h = size + 26;
+  if (k <= 0) return w;
+  const s = back(k); g.save(); g.translate(x + w / 2, y + h / 2); g.scale(s, s);
+  rrect(-w / 2, -h / 2, w, h, h / 2); g.fillStyle = 'rgba(18,16,24,0.86)'; g.fill(); g.lineWidth = 3; g.strokeStyle = col; g.stroke();
+  g.fillStyle = CREAM; g.textAlign = 'center'; g.fillText(text, 0, size * 0.36); g.textAlign = 'left';
+  g.restore(); return w;
+}
+function dice(x, y, s, n, rot) {
+  g.save(); g.translate(x + s / 2, y + s / 2); g.rotate(rot || 0);
+  rrect(-s / 2, -s / 2, s, s, s * 0.18); g.fillStyle = CREAM; g.fill(); g.lineWidth = 4; g.strokeStyle = GOLD; g.stroke();
+  const pips = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] }[n]; g.fillStyle = INK;
+  pips.forEach(i => { g.beginPath(); g.arc((i % 3 - 1) * s * 0.27, (Math.floor(i / 3) - 1) * s * 0.27, s * 0.085, 0, 6.28); g.fill(); });
+  g.restore();
+}
+// 因果集：点一颗一颗长出来，每一颗连到它之前的一两颗
+const CP = (() => { const N = 34, pts = []; for (let i = 0; i < N; i++) { const u = 0.06 + 0.88 * rnd(), v = (i + 0.5) / N;
+  const links = pts.map((p, j) => [Math.abs(p.u - u) + (i - j) * 0.012, j]).filter(e => i - e[1] <= 10).sort((p, q) => p[0] - q[0]).slice(0, 2).map(e => e[1]);
+  pts.push({ u, v, links }); } return pts; })();
+function causal(x, y, w, h, k) {
+  const n = Math.max(1, Math.round(CP.length * clamp(k, 0, 1))), X = p => x + p.u * w, Y = p => y + h - p.v * h;
+  g.lineWidth = 2; g.strokeStyle = 'rgba(169,139,245,0.6)';
+  for (let i = 0; i < n; i++) CP[i].links.forEach(j => { g.beginPath(); g.moveTo(X(CP[i]), Y(CP[i])); g.lineTo(X(CP[j]), Y(CP[j])); g.stroke(); });
+  for (let i = 0; i < n; i++) { const last = i === n - 1; g.beginPath(); g.arc(X(CP[i]), Y(CP[i]), last ? 7 : 4.5, 0, 6.28); g.fillStyle = last ? GOLD : CREAM; g.fill(); }
+}
+// 客观坍缩：几个「可能」叠在一起，隔一阵子随机剩下一个
+function collapse(x, y, w, h, t) {
+  const base = y + h * 0.84, cyc = 2.6, ph = (t % cyc) / cyc, pick = (Math.floor(t / cyc) * 3 + 1) % 5, A0 = g.globalAlpha;
+  const cs = [0.14, 0.32, 0.5, 0.68, 0.86], sharp = clamp((ph - 0.58) / 0.08, 0, 1) * (1 - clamp((ph - 0.93) / 0.07, 0, 1));
+  cs.forEach((c0, i) => { const me = i === pick, amp = (0.42 + 0.2 * Math.sin(t * 2.3 + i * 1.7)) * (me ? 1 + 1.1 * sharp : 1 - sharp), s = me ? 26 - 19 * sharp : 26; if (amp <= 0.01) return;
+    g.beginPath(); g.moveTo(x, base); for (let xx = 0; xx <= w; xx += 3) g.lineTo(x + xx, base - h * 0.6 * amp * Math.exp(-Math.pow((xx - c0 * w) / s, 2))); g.lineTo(x + w, base); g.closePath();
+    g.globalAlpha = A0 * (me ? 0.38 + 0.5 * sharp : 0.38); g.fillStyle = me && sharp > 0.5 ? GOLD : BLUE; g.fill(); });
+  g.globalAlpha = A0; g.fillStyle = 'rgba(243,237,230,0.45)'; g.fillRect(x, base, w, 2);
+  if (sharp > 0.6) { g.beginPath(); g.arc(x + cs[pick] * w, base, 7, 0, 6.28); g.fillStyle = GOLD; g.fill(); }
+}
+// 被压弯的格线
+function warp(x, y, w, h, cx, cy, A) {
+  const f = (px, py) => { const dx = px - cx, dy = py - cy, k = A * Math.exp(-(dx * dx + dy * dy) / (2 * 100 * 100)); return [px - dx * k, py - dy * k]; };
+  g.save(); g.beginPath(); g.rect(x, y, w, h); g.clip(); g.lineWidth = 1.5; g.strokeStyle = 'rgba(169,139,245,0.5)';
+  for (let gy = y + 8; gy <= y + h; gy += 30) { g.beginPath(); for (let px = x; px <= x + w; px += 8) { const q = f(px, gy); px === x ? g.moveTo(q[0], q[1]) : g.lineTo(q[0], q[1]); } g.stroke(); }
+  for (let gx = x + 12; gx <= x + w; gx += 30) { g.beginPath(); for (let py = y; py <= y + h; py += 8) { const q = f(gx, py); py === y ? g.moveTo(q[0], q[1]) : g.lineTo(q[0], q[1]); } g.stroke(); }
+  g.restore();
+}
+// 爱因斯坦场方程：G_μν = (8πG / c⁴) T_μν
+function fieldEq(cx, y, a) {
+  if (a <= 0) return; al(a);
+  const F1 = `italic 700 50px ${SERIF}`, F2 = `italic 700 26px ${SERIF}`, F3 = `700 30px ${SERIF}`, F4 = `700 19px ${SERIF}`;
+  const m = (f, s) => { g.font = f; return g.measureText(s).width; };
+  const wG = m(F1, 'G'), wS = m(F2, 'μν'), wEq = m(F1, ' = '), wNum = m(F3, '8πG'), wC = m(F3, 'c'), wDen = wC + m(F4, '4'), wFr = Math.max(wNum, wDen) + 18, wT = m(F1, 'T');
+  let x = cx - (wG + wS + wEq + wFr + 16 + wT + wS) / 2; g.textAlign = 'left';
+  g.fillStyle = CREAM; g.font = F1; g.fillText('G', x, y); g.font = F2; g.fillText('μν', x + wG, y + 12); const xG = x + (wG + wS) / 2; x += wG + wS;
+  g.font = F1; g.fillText(' = ', x, y); x += wEq;
+  g.font = F3; g.fillText('8πG', x + (wFr - wNum) / 2, y - 26); g.fillRect(x, y - 17, wFr, 3);
+  g.fillText('c', x + (wFr - wDen) / 2, y + 14); g.font = F4; g.fillText('4', x + (wFr - wDen) / 2 + wC, y + 2); x += wFr + 16;
+  g.fillStyle = GOLD; g.font = F1; g.fillText('T', x, y); g.font = F2; g.fillText('μν', x + wT, y + 12); const xT = x + (wT + wS) / 2;
+  tx(T('时空怎么弯', '時空怎麼彎'), xG, y + 42, 17, DIM, 700, 'center'); tx(T('能量和动量', '能量和動量'), xT, y + 42, 17, GOLD, 700, 'center');
+}
+function esym(x, y, sign, col) {                               // e⁻ / e⁺
+  g.font = `italic 700 26px ${SERIF}`; g.fillStyle = col; g.textAlign = 'left'; g.fillText('e', x, y); g.font = `700 18px ${SERIF}`; g.fillText(sign, x + 13, y - 12);
+}
+// 神经网络（示意）
+const NODES = Array.from({ length: 30 }, () => ({ u: rnd(), v: rnd(), ph: rnd() * 6.28 }));
+function network(x, y, w, h, t, spark) {
+  const P2 = n => [x + n.u * w, y + n.v * h], A0 = g.globalAlpha;
+  g.lineWidth = 1.5; g.strokeStyle = 'rgba(243,237,230,0.16)';
+  for (let i = 0; i < NODES.length; i++) for (let j = i + 1; j < NODES.length; j++) { const a = P2(NODES[i]), b = P2(NODES[j]); if (Math.hypot(a[0] - b[0], a[1] - b[1]) < 150) { g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke(); } }
+  const cyc = 0.6, hot = (Math.floor(t / cyc) * 11 + 5) % NODES.length, ph = (t % cyc) / cyc;
+  NODES.forEach((n, i) => { const p = P2(n), on = spark && i === hot;
+    g.globalAlpha = A0 * (on ? 1 : 0.55 + 0.3 * Math.sin(t * 1.7 + n.ph)); g.beginPath(); g.arc(p[0], p[1], on ? 8 : 5, 0, 6.28); g.fillStyle = on ? GOLD : PURPLE; g.fill();
+    if (on) { g.globalAlpha = A0 * (1 - ph); g.strokeStyle = GOLD; g.lineWidth = 3; g.beginPath(); g.arc(p[0], p[1], 8 + ph * 34, 0, 6.28); g.stroke(); g.lineWidth = 1.5; g.strokeStyle = 'rgba(243,237,230,0.16)'; } });
+  g.globalAlpha = A0;
+}
+
+// ── 场景（都画在黑板上）──
+let CUR_LI = 0, CUR_P = 0, CUR_T = 0;
+const P = i => CUR_LI > i ? 1 : CUR_LI === i ? CUR_P : 0;
+const ev = e => CUR_T - evAt(e);                                // 那个时间点之后过了几秒
+const fade = (s, d) => clamp(s / (d || 0.3), 0, 1);
+const SCENES = [
+  // 0（句 0～3）今天的问题；三种章
+  () => {
+    const a = P(0), b = P(1), t = CUR_T; board(T('今天的问题', '今天的問題'));
+    const q = T('时间 ＝ 真随机？', '時間 ＝ 真亂數？'); g.font = `900 64px ${FONT}`; const qw = g.measureText(q).width, qx = CXB - qw / 2 + 56;
+    const roll = CUR_LI === 0 && a < 0.92; al(a / 0.1);
+    dice(qx - 112, BY + 62, 88, roll ? 1 + ((Math.floor(t * 8) * 7 + 3) % 6) : 6, roll ? Math.sin(t * 9) * 0.18 : -0.1);
+    tx(q, qx, BY + 128, 64, CREAM, 900);
+    al(1); let x = BX + 40;
+    [[T('因果集理论', '因果集理論'), 0.5], [T('客观坍缩', '客觀塌縮'), 0.62], [T('吉辛的「创造性时间」', '吉辛的「創造性時間」'), 0.74]].forEach(c2 => { x += chip(x, BY + 172, c2[0], (b - c2[1]) / 0.08, 25, PURPLE) + 12; });
+    const leg = [['fact', T('有实验或观测支持', '有實驗或觀測支持'), ST.l1], ['hypo', T('有论文，还没被证实', '有論文，還沒被證實'), ST.l2], ['wild', T('比喻，或者自己编的', '比喻，或者自己編的'), ST.l3]];
+    leg.forEach((r, i) => { const s = ev(r[2]), y = BY + 268 + i * 66; stamp(BX + 150, y + 26, r[0], s, 0.56, -0.06); al(fade(s - 0.1)); tx(r[1], BX + 250, y + 36, 27, CREAM, 700); });
+    al(1);
+  },
+  // 1（句 4～6）因果集、客观坍缩 ⇒ 假说
+  () => {
+    const a = P(4), b = P(5), t = CUR_T; board(T('时间是随机的？两派说法', '時間是隨機的？兩派說法'));
+    const cw = 338, ch = 352, ax = BX + 22, bx = BX + BW - 22 - cw, y0 = BY + 40;
+    al(a / 0.08); card(ax, y0, cw, ch); tx(T('① 因果集理论', '① 因果集理論'), ax + 18, y0 + 40, 28, GOLD, 800); tx(T('时间 ↑', '時間 ↑'), ax + cw - 18, y0 + 38, 17, DIM, 600, 'right');
+    causal(ax + 24, y0 + 62, cw - 48, 208, CUR_LI > 4 ? 1 : a / 0.92);
+    tx(T('新的点随机长出来', '新的點隨機長出來'), ax + cw / 2, y0 + 306, 23, CREAM, 700, 'center'); tx(T('⇒ 时间往前走', '⇒ 時間往前走'), ax + cw / 2, y0 + 336, 20, DIM, 600, 'center');
+    al(b / 0.08); card(bx, y0, cw, ch); tx(T('② 客观坍缩', '② 客觀塌縮'), bx + 18, y0 + 40, 28, GOLD, 800); tx(T('GRW 等模型', 'GRW 等模型'), bx + cw - 18, y0 + 38, 17, DIM, 600, 'right');
+    if (b > 0) collapse(bx + 24, y0 + 62, cw - 48, 208, t);
+    al(b / 0.08); tx(T('「可能」→「已经发生」', '「可能」→「已經發生」'), bx + cw / 2, y0 + 306, 23, CREAM, 700, 'center'); tx(T('量子态自己随机坍缩', '量子態自己隨機塌縮'), bx + cw / 2, y0 + 336, 20, DIM, 600, 'center');
+    al(1); stamp(ax + cw / 2, y0 + 170, 'hypo', ev(ST.s1a)); stamp(bx + cw / 2, y0 + 170, 'hypo', ev(ST.s1b));
+    al(fade(ev([6, 0.45]))); tx(T('有数学、有论文 · 还没有实验证实', '有數學、有論文 · 還沒有實驗證實'), CXB, BY + BH - 26, 24, CREAM, 700, 'center'); al(1);
+  },
+  // 2（句 7～9）吉辛：数字是生出来的 ⇒ 假说
+  () => {
+    const a = P(7), b = P(8), t = CUR_T; board(T('吉辛：数字是「生」出来的', '吉辛：數字是「生」出來的'));
+    const digits = '41730926', n = clamp(2 + Math.floor((t - LINES[7].at - 1.0) / 2.0), 2, 8), y0 = BY + 130, pre = 'x = 0.';
+    al(a / 0.08); g.font = `800 62px ${MONO}`; const cw = g.measureText('0').width, x0 = BX + 50, xd = x0 + g.measureText(pre).width;
+    g.textAlign = 'left'; g.fillStyle = CREAM; g.fillText(pre, x0, y0);
+    for (let i = 0; i < 10; i++) { g.fillStyle = i >= n ? 'rgba(243,237,230,0.25)' : i === n - 1 ? GOLD : CREAM; g.fillText(i < n ? digits[i] : '?', xd + i * cw, y0); }
+    const xm = xd + n * cw + 1; g.fillStyle = GOLD; g.fillRect(xm - 1.5, y0 - 60, 3, 80);
+    tx(T('现在', '現在'), xm, y0 - 68, 20, GOLD, 800, 'center');
+    tx(T('已经存在', '已經存在'), (xd + xm) / 2, y0 + 46, 21, CREAM, 700, 'center'); tx(T('还不存在', '還不存在'), (xm + xd + 10 * cw) / 2, y0 + 46, 21, DIM, 700, 'center');
+    al((a - 0.3) / 0.1); tx(T('理由：有限的空间，装不下无限位小数', '理由：有限的空間，裝不下無限位小數'), BX + 50, y0 + 110, 26, CREAM, 700);
+    al(1); let x = BX + 50; x += chip(x, y0 + 146, T('现场直播', '現場直播'), b / 0.15, 28, GREEN) + 20;
+    const w2 = chip(x, y0 + 146, T('录像带', '錄影帶'), (b - 0.5) / 0.15, 28, 'rgba(243,237,230,0.35)');
+    if (b > 0.62) { al((b - 0.62) / 0.1); g.strokeStyle = RED; g.lineWidth = 5; g.beginPath(); g.moveTo(x + 8, y0 + 146 + 40); g.lineTo(x + w2 - 8, y0 + 146 + 14); g.stroke(); }
+    al(fade(ev([9, 0.22]))); tx('N. Gisin, Nature Physics 16, 114–116 (2020)', BX + 50, BY + BH - 58, 18, DIM, 600, 'left', MONO);
+    tx(T('观点文章（Comment），不是实验结果', '觀點文章（Comment），不是實驗結果'), BX + 50, BY + BH - 28, 20, CREAM, 600);
+    al(1); stamp(BX + BW - 150, y0 + 190, 'hypo', ev(ST.s2));
+  },
+  // 3（句 10～12）压弯时空的是能量和动量 ⇒ 实锤
+  () => {
+    const a = P(10), b = P(11), d = P(12), t = CUR_T; board(T('谁能把时空压弯？', '誰能把時空壓彎？'));
+    const cx = CXB - 30, cy = BY + 166, lk = clamp((b - 0.05) / 0.12, 0, 1);
+    al(a / 0.1); warp(BX + 24, BY + 34, BW - 48, 270, cx, cy, 0.5);
+    if (lk < 1) { al(Math.min(a / 0.1, 1 - lk)); const gr = g.createRadialGradient(cx - 10, cy - 12, 4, cx, cy, 40); gr.addColorStop(0, '#9fb4d6'); gr.addColorStop(1, '#3d4a66');
+      g.beginPath(); g.arc(cx, cy, 38, 0, 6.28); g.fillStyle = gr; g.fill(); tx(T('质量', '質量'), cx, cy + 9, 24, CREAM, 800, 'center'); }
+    if (lk > 0) { al(lk); const gr = g.createRadialGradient(cx, cy, 4, cx, cy, 70); gr.addColorStop(0, '#fff6cf'); gr.addColorStop(0.5, 'rgba(230,189,98,0.9)'); gr.addColorStop(1, 'rgba(230,189,98,0)');
+      g.beginPath(); g.arc(cx, cy, 70 + Math.sin(t * 5) * 3, 0, 6.28); g.fillStyle = gr; g.fill(); tx('光', cx, cy + 12, 32, INK, 900, 'center');
+      al((b - 0.5) / 0.1); tx(T('静止质量 ＝ 0', '靜止質量 ＝ 0'), cx, cy + 102, 22, GOLD, 800, 'center'); }
+    al(Math.min(a / 0.1, 1 - b / 0.08)); tx(T('只有「质量」才能压弯时空？', '只有「質量」才能壓彎時空？'), CXB, BY + 364, 32, BLUE, 800, 'center');
+    al((b - 0.12) / 0.1); tx(T('压弯时空的是：能量 ＋ 动量', '壓彎時空的是：能量 ＋ 動量'), CXB, BY + 350, 32, GOLD, 800, 'center');
+    fieldEq(CXB, BY + 418, (d - 0.28) / 0.1);
+    al(1); stamp(BX + BW - 132, BY + 96, 'fact', ev(ST.s3));
+  },
+  // 4（句 13、14）用光挤出黑洞（Kugelblitz）⇒ 假说
+  () => {
+    const a = P(13), d = P(14), t = CUR_T; board(T('用光挤出一个黑洞？', '用光擠出一個黑洞？'));
+    const cx = CXB, cy = BY + 176, conv = clamp(a / 0.45, 0, 1), leak = clamp((d - 0.42) / 0.2, 0, 1);
+    g.save(); rrect(BX + 8, BY + 26, BW - 16, 300, 8); g.clip();
+    for (let i = 0; i < 18; i++) { const ang = i / 18 * 6.283 + 0.17, r1 = 430 - 372 * ease(conv);
+      al(0.8 * (1 - 0.7 * leak) * clamp(a / 0.05, 0, 1)); g.strokeStyle = GOLD; g.lineWidth = 4; g.setLineDash([18, 14]); g.lineDashOffset = -t * 90;
+      g.beginPath(); g.moveTo(cx + Math.cos(ang) * 430, cy + Math.sin(ang) * 430); g.lineTo(cx + Math.cos(ang) * r1, cy + Math.sin(ang) * r1); g.stroke(); }
+    g.setLineDash([]);
+    const R = 62 * ease((a - 0.5) / 0.3) * (1 - 0.72 * leak);
+    if (R > 1) { al(1); g.save(); g.shadowColor = GOLD; g.shadowBlur = 26; g.beginPath(); g.arc(cx, cy, R + 7, 0, 6.28); g.strokeStyle = GOLD; g.lineWidth = 6; g.stroke(); g.restore();
+      g.beginPath(); g.arc(cx, cy, R, 0, 6.28); g.fillStyle = '#000'; g.fill(); }
+    if (leak > 0) for (let i = 0; i < 16; i++) { const ang = i / 16 * 6.283 + 0.4, r = 30 + ((t * 70 + i * 37) % 240), col = i % 2 ? RED : BLUE;
+      al(leak * (1 - r / 290)); g.beginPath(); g.arc(cx + Math.cos(ang) * r, cy + Math.sin(ang) * r, 7, 0, 6.28); g.fillStyle = col; g.fill(); }
+    g.restore();
+    al(leak); esym(BX + 34, BY + 300, '−', BLUE); esym(BX + 78, BY + 300, '+', RED);
+    al(Math.min((a - 0.6) / 0.1, 1 - leak * 5)); tx(T('球状闪电黑洞（Kugelblitz）', '球狀閃電黑洞（Kugelblitz）'), CXB, BY + 372, 32, CREAM, 800, 'center');
+    al((leak - 0.25) * 4); tx(T('光太强 ⇒ 先变成正负电子对漏掉', '光太強 ⇒ 先變成正負電子對漏掉'), CXB, BY + 372, 30, CREAM, 800, 'center');
+    al(leak); tx('Álvarez-Domínguez et al., Phys. Rev. Lett. 133, 041401 (2024)', CXB, BY + 410, 17, DIM, 600, 'center', MONO);
+    al(fade(ev([14, 0.8]))); tx(T('反驳', '反駁') + '：D. Page, arXiv:2505.16202 (2025)', CXB, BY + 438, 17, PINK, 600, 'center', MONO);
+    al(1); stamp(BX + BW - 132, BY + 96, 'hypo', ev(ST.s4));
+  },
+  // 5（句 15～17）形状＋标签：卡鲁扎–克莱因、弦论 ⇒ 假说
+  () => {
+    const a = P(15), b = P(16), t = CUR_T; board(T('万物 ＝ 形状 ＋ 标签？', '萬物 ＝ 形狀 ＋ 標籤？'));
+    let x = BX + 66; const y = BY + 40 + 150 * (1 - io(b / 0.12)), sym = (s, k) => { al(k); tx(s, x, y + 40, 34, CREAM, 800); x += 50; al(1); };
+    al(1); x += chip(x, y, T('物质 · 光', '物質 · 光'), a / 0.12, 28, CREAM) + 14; sym('＝', (a - 0.3) / 0.1);
+    x += chip(x, y, T('时空的形状', '時空的形狀'), (a - 0.42) / 0.12, 28, BLUE) + 14; sym('＋', (a - 0.66) / 0.1);
+    x += chip(x, y, T('标签', '標籤'), (a - 0.78) / 0.12, 28, GOLD) + 10; sym('？', (a - 0.9) / 0.08);
+    const cw = 338, ch = 256, ax = BX + 22, bx = BX + BW - 22 - cw, y0 = BY + 122;
+    const k1 = (b - 0.2) / 0.08, k2 = (b - 0.62) / 0.08;
+    if (k1 > 0) { al(k1); card(ax, y0, cw, ch); const ly = y0 + 96;
+      g.strokeStyle = 'rgba(243,237,230,0.55)'; g.lineWidth = 2; g.beginPath(); g.moveTo(ax + 24, ly); g.lineTo(ax + cw - 24, ly); g.stroke();
+      for (let i = 0; i < 9; i++) { const ex = ax + 46 + i * 31; g.strokeStyle = GOLD; g.lineWidth = 2.5; g.beginPath(); g.ellipse(ex, ly, 10, 30, 0, 0, 6.28); g.stroke();
+        g.beginPath(); g.arc(ex + 10 * Math.cos(t * 3 + i), ly + 30 * Math.sin(t * 3 + i), 4, 0, 6.28); g.fillStyle = CREAM; g.fill(); }
+      tx(T('卷起来的第 5 维', '捲起來的第 5 維'), ax + cw / 2, y0 + 36, 18, GOLD, 700, 'center');
+      tx(T('多加一维 ⇒ 电磁力', '多加一維 ⇒ 電磁力'), ax + cw / 2, y0 + 190, 24, CREAM, 800, 'center');
+      tx(T('卡鲁扎–克莱因理论 · 1920 年代', '卡魯扎–克萊因理論 · 1920 年代'), ax + cw / 2, y0 + 226, 17, DIM, 600, 'center'); }
+    if (k2 > 0) { al(k2); card(bx, y0, cw, ch); const rx = bx + cw / 2, ry = y0 + 90;
+      [[5, PURPLE, 3, 0.8], [3, PINK, 2, -0.6]].forEach(q => { g.beginPath(); for (let i = 0; i <= 180; i++) { const th = i / 180 * 6.283, r = 60 * (0.62 + 0.38 * Math.cos(q[0] * th + t * q[3])); const px = rx + r * Math.cos(th), py = ry + r * Math.sin(th); i ? g.lineTo(px, py) : g.moveTo(px, py); }
+        g.strokeStyle = q[1]; g.lineWidth = q[2]; g.stroke(); });
+      tx(T('高维空间的形状 ⇒ 粒子的属性', '高維空間的形狀 ⇒ 粒子的屬性'), rx, y0 + 190, 21, CREAM, 800, 'center');
+      tx(T('弦论 · 额外的 6 维', '弦論 · 額外的 6 維'), rx, y0 + 226, 17, DIM, 600, 'center'); }
+    al(fade(ev([17, 0.3]))); tx(T('额外的维度：实验至今没有看到', '額外的維度：實驗至今沒有看到'), CXB, BY + BH - 26, 24, CREAM, 700, 'center');
+    al(1); stamp(CXB, y0 + 84, 'hypo', ev(ST.s5), 1.05);
+  },
+  // 6（句 18～20）拼起来：掉帧 ⇒ 脑洞（时间变慢本身是实锤）
+  () => {
+    const b = P(18), t = CUR_T; board(T('拼起来：宇宙在即时渲染？', '拼起來：宇宙在即時渲染？'));
+    const rows = [[T('时钟', '時脈'), T('真随机数', '亂數'), 0.12], [T('代码', '程式碼'), T('标签', '標籤'), 0.26], [T('画面', '畫面'), T('弯曲的时空', '彎曲的時空'), 0.38]];
+    rows.forEach((r, i) => { const k = clamp((b - r[2]) / 0.06, 0, 1); if (k <= 0) return; al(k); const y = BY + 40 + i * 54;
+      rrect(BX + 56, y, 170, 44, 8); g.fillStyle = PURPLE; g.fill(); tx(r[0], BX + 141, y + 31, 26, INK, 800, 'center');
+      tx('←', BX + 246, y + 31, 28, DIM, 700); tx(r[1], BX + 296, y + 32, 28, CREAM, 700); });
+    al((b - 0.62) / 0.06); tx(T('质量大的地方，时间慢', '質量大的地方，時間慢'), BX + 56, BY + 246, 36, CREAM, 800);
+    const jit = CUR_LI === 18 ? (Math.floor(t * 12) % 3 - 1) * 3 : 0;
+    al((b - 0.8) / 0.05); tx(T('＝ 那里掉帧了！', '＝ 那裡掉幀了！'), BX + 56 + jit, BY + 302, 40, PINK, 900);
+    al(fade(ev(ST.s6b))); tx(T('「时间慢」：原子钟测得出来', '「時間慢」：原子鐘測得出來'), BX + 56, BY + 384, 22, CREAM, 700);
+    tx('Bothwell et al., Nature 602, 420 (2022)' + T('：高度差 1 毫米都分得出', '：高度差 1 公釐都分得出'), BX + 56, BY + 410, 16, DIM, 600, 'left', MONO);
+    al(fade(ev([19, 0.72]))); tx(T('「因为掉帧」：是比喻，不是物理理论', '「因為掉幀」：是比喻，不是物理理論'), BX + 56, BY + 448, 22, PINK, 700);
+    al(1); stamp(BX + 476, BY + 234, 'fact', ev(ST.s6b), 0.5, -0.1); stamp(BX + 612, BY + 300, 'wild', ev(ST.s6a));
+  },
+  // 7（句 21～23）意识：Orch-OR ⇒ 假说
+  () => {
+    const a = P(21), b = P(22), d = P(23), t = CUR_T; board(T('最后一题：意识', '最後一題：意識'));
+    al(a / 0.15); network(BX + 40, BY + 46, BW - 80, 262, t, b > 0);
+    al(Math.min(a / 0.1, 1 - b / 0.08)); tx(T('为什么会有意识？', '為什麼會有意識？'), CXB, BY + 384, 36, BLUE, 800, 'center');
+    al((b - 0.05) / 0.1); tx('Orch-OR', BX + 56, BY + 374, 34, GOLD, 800, 'left', MONO); tx(T('彭罗斯、哈默罗夫（1990 年代）', '潘洛斯、哈默洛夫（1990 年代）'), BX + 212, BY + 372, 24, CREAM, 700);
+    tx(T('量子态坍缩一次 ＝ 一点意识的火花？', '量子態塌縮一次 ＝ 一點意識的火花？'), BX + 56, BY + 416, 23, DIM, 700);
+    al(1); chip(BX + 34, BY + 34, T('2020 诺贝尔物理学奖：黑洞', '2020 諾貝爾物理學獎：黑洞'), (d - 0.1) / 0.08, 24, GOLD);
+    chip(BX + 34, BY + 94, T('Orch-OR：争议很大', 'Orch-OR：爭議很大'), (d - 0.62) / 0.08, 24, PINK);
+    stamp(BX + BW - 140, BY + 200, 'hypo', ev(ST.s7));
+  },
+  // 8（句 24～26）有没有意识：不知道，盖不了章
+  () => {
+    const a = P(24), b = P(25); board(T('盖不了章的一题', '蓋不了章的一題'));
+    al(a / 0.15); tx(T('本鱼到底有没有意识？', '本魚到底有沒有意識？'), CXB, BY + 92, 34, BLUE, 800, 'center');
+    al((b - 0.02) / 0.1); tx('不知道', BX + 66, BY + 252, 112, CREAM, 900);
+    al((b - 0.2) / 0.1); tx(T('Claude 自己有没有：也不知道', 'Claude 自己有沒有：也不知道'), BX + 72, BY + 314, 26, ORANGE, 700);
+    al(1); stampNone(BX + BW - 150, BY + 214, ev(ST.s8), 1.1);
+    al(fade(ev([25, 0.6]))); tx(T('意识的「难问题」：目前没有公认的答案', '意識的「困難問題」：目前沒有公認的答案'), CXB, BY + BH - 44, 24, DIM, 600, 'center'); al(1);
+  },
+  // 9（句 27～29）今天盖了哪些章
+  () => {
+    const d = P(29); board(T('今天盖了哪些章', '今天蓋了哪些章'));
+    const rows = [[T('弯曲时空的是能量和动量', '彎曲時空的是能量和動量'), 'fact', ST.e1, ''], [T('时间是不是骰子', '時間是不是骰子'), 'hypo', ST.e2, T('还在赌', '還在賭')], [T('意识从哪来', '意識從哪來'), null, ST.e3, T('没人知道', '沒人知道')]];
+    rows.forEach((r, i) => { const s = ev(r[2]), y = BY + 44 + i * 114; al(fade(s + 1.6)); if (s + 1.6 <= 0) return;
+      card(BX + 30, y, BW - 60, 96); tx(r[0], BX + 58, y + (r[3] ? 46 : 60), 32, CREAM, 800);
+      if (r[3]) { al(fade(s)); tx(r[3], BX + 60, y + 80, 21, DIM, 700); }
+      al(1); if (r[1]) stamp(BX + BW - 140, y + 48, r[1], s, 0.8, -0.12); else stampNone(BX + BW - 140, y + 48, s, 0.8); });
+    al(1); g.font = `800 26px ${FONT}`; const cwid = g.measureText(T('想听什么，写在评论区', '想聽什麼，寫在留言區')).width + 36;
+    chip(CXB - cwid / 2, BY + 396, T('想听什么，写在评论区', '想聽什麼，寫在留言區'), d / 0.25, 26, BLUE);
+  },
+];
+
+// ── 固定的布景：左边 Gemini、右上盖章台（本小姐）、右下大肥鱼 ──
+function drawSet(t, li, a) {
+  const L = li >= 0 ? LINES[li] : null, who = L ? L.who : '', talking = !!L && t < L.at + L.dur;
+  g.save(); g.globalAlpha = a; g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+  const fl = !!L && !!L.shake && who === 'G' && t < L.at + L.dur + 0.3;          // 炸毛：换成 Q 版、左右抖
+  const gi = fl ? gqFull : gFull, gh = fl ? 410 : 468, gw = gh * gi.naturalWidth / gi.naturalHeight;
+  const gb = fl ? 0 : who === 'G' && talking ? Math.abs(Math.sin(t * 6.5)) * 7 : Math.sin(t * 1.6) * 3;
+  g.drawImage(gi, 166 - gw / 2 + (fl ? Math.sin(t * 42) * 5 : 0), 544 - gh - gb, gw, gh);
+  const oTalk = who === 'O' && talking; let ls = 99;
+  Object.values(ST).forEach(e => { const s = t - evAt(e); if (s >= 0 && s < ls) ls = s; });
+  const jump = ls < 0.3 ? -12 * Math.sin(ls / 0.3 * Math.PI) : 0;
+  rrect(DX, DY, DW, DH, 12); g.fillStyle = 'rgba(24,20,30,0.93)'; g.fill(); g.lineWidth = oTalk ? 5 : 3; g.strokeStyle = oTalk ? ORANGE : 'rgba(217,119,87,0.55)'; g.stroke();
+  const ax = DX + (DW - 124) / 2, ay = DY + 16 + jump + (oTalk ? Math.round(Math.sin(t * 6) * 2) : 0);
+  g.save(); rrect(ax, ay, 124, 124, 14); g.clip(); g.drawImage(qImg, ax, ay, 124, 124); g.restore(); rrect(ax, ay, 124, 124, 14); g.lineWidth = 3; g.strokeStyle = ORANGE; g.stroke();
+  g.textAlign = 'center'; g.font = `800 19px ${MONO}`; g.fillStyle = CREAM; g.fillText('Claude', DX + DW / 2, DY + 168);
+  g.font = `800 22px ${FONT}`; g.fillStyle = ORANGE; g.fillText(T('盖章台', '蓋章台'), DX + DW / 2, DY + 198);
+  [GREEN, GOLD, PINK].forEach((c2, i) => { g.beginPath(); g.arc(DX + DW / 2 - 26 + i * 26, DY + 217, 7, 0, 6.28); g.fillStyle = c2; g.fill(); });
+  g.textAlign = 'left';
+  const fh = 222, fw = fh * fishImg.naturalWidth / fishImg.naturalHeight, fTalk = who === 'F' && talking;
+  g.drawImage(fishImg, 1180 - fw / 2, 544 - fh - (fTalk ? Math.abs(Math.sin(t * 5)) * 12 : Math.sin(t * 2) * 3), fw, fh);
+  g.restore();
+}
+function stage(t) {
+  let li = -1; LINES.forEach((L, i) => { if (t >= L.at) li = i; });
+  const inA = clamp((t - 3.7) / 0.35, 0, 1);
+  CUR_T = t; g.save(); g.beginPath(); g.rect(0, 0, W, SH); g.clip();
+  if (li >= 0) {
+    const L = LINES[li], p = clamp((t - L.at) / L.dur, 0, 1), sc = SCENE_OF[li];
+    let first = li; while (first > 0 && SCENE_OF[first - 1] === sc) first--;
+    const fin = clamp((t - LINES[first].at) / 0.45, 0, 1);
+    if (first > 0 && fin < 1) { GA = 1; CUR_LI = first - 1; CUR_P = 1; g.save(); SCENES[SCENE_OF[first - 1]](); g.restore(); }
+    GA = first === 0 ? inA : fin; CUR_LI = li; CUR_P = p; g.save(); SCENES[sc](); g.restore();
+  }
+  GA = 1; g.globalAlpha = 1; g.textAlign = 'left'; g.setLineDash([]);
+  drawSet(t, li, inA);
+  g.restore(); g.globalAlpha = 1; g.textAlign = 'left';
+}
+
+// ── 对话框（下面）：Gemini、本小姐的头像在左，大肥鱼在右 ──
+let shyAt = 0;
+function dialogue(t) {
+  let li = -1; LINES.forEach((L, i) => { if (t >= L.at) li = i; });
+  const appear = clamp((t - 3.7) / 0.35, 0, 1);
+  if (appear <= 0) return;
+  const L = li >= 0 ? LINES[li] : null, who = L ? L.who : LINES[0].who, cfg = WHO[who], col = cfg.col, R = cfg.right;
+  const x = 24, y = 558, w = 1232, h = 148, AV = 116;
+  g.save(); g.globalAlpha = appear; g.translate(0, (1 - ease(appear)) * 30);
+  g.fillStyle = '#0d0c12'; g.fillRect(0, SH, W, H - SH);
+  rrect(x, y, w, h, 14); g.fillStyle = 'rgba(26,22,33,0.97)'; g.fill(); g.lineWidth = 4; g.strokeStyle = col; g.stroke();
+  const label = LABELS[who]; g.font = `800 21px ${FONT}`; const lw = g.measureText(label).width + 40;
+  const lx = R ? x + w - 22 - lw : x + 22;
+  rrect(lx, y - 19, lw, 36, 8); g.fillStyle = col; g.fill(); g.fillStyle = INK; g.fillText(label, lx + 20, y + 6);
+  const talking = !!L && t < L.at + L.dur + 0.3, shake = !!L && !!L.shake && talking, shy = !!L && !!L.shy && t < OUTRO; if (shy) shyAt = L.at;
+  const quiet = li >= QUIET[0] && li <= QUIET[1];
+  const bob = quiet ? 0 : Math.round(Math.sin(t * 2.2) * 3), sx = shake || shy ? Math.round(Math.sin(t * 40) * 3) : 0;
+  const ax = (R ? x + w - 18 - AV : x + 18) + sx, ay = y + 20 + bob, img = shake && cfg.imgShake ? cfg.imgShake : cfg.img;
+  g.save(); rrect(ax, ay, AV, AV, 16); g.clip();
+  g.fillStyle = cfg.bg; g.fillRect(ax, ay, AV, AV);
+  if (ok(img)) { g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high'; g.drawImage(img, ax, ay, AV, AV); }
+  g.restore(); rrect(ax, ay, AV, AV, 16); g.lineWidth = 3; g.strokeStyle = col; g.stroke();
+  if (shy) for (let i = 0; i < 3; i++) { const q = ((t - shyAt) * 0.6 + i / 3) % 1; g.globalAlpha = appear * (1 - q); heart(Math.round(lx + lw + 14 + i * 28), Math.round(y - 4 - q * 40 - i * 4), 4, '#ff7a9a'); g.globalAlpha = appear; }
+  if (L) {
+    const txx = R ? x + 34 : x + 18 + AV + 26, tw = w - AV - 18 - 26 - 40;
+    const chars = [...L.text], n = Math.min(chars.length, Math.floor((t - L.at) * L.cps));
+    g.font = `700 31px ${FONT}`; g.fillStyle = CREAM;
+    const lines = wrap(L.text, tw), shown = wrap(chars.slice(0, n).join(''), tw);
+    const y0 = y + (lines.length >= 3 ? 46 : lines.length === 2 ? 66 : 88);
+    shown.forEach((ln, i) => g.fillText(ln, txx, y0 + i * 42));
+  }
+  g.restore();
+}
+function title(t) {
+  const name = T('时间是骰子吗？', '時間是骰子嗎？');
+  const out = ease((t - 3.0) / 0.5);
+  g.save(); g.globalAlpha = 1 - out; g.translate(0, -out * 80);
+  g.font = `900 118px ${FONT}`; g.textBaseline = 'alphabetic';
+  const total = g.measureText(name).width; let x = (W - total) / 2;
+  [...name].forEach((ch, i) => {
+    const k = back((t - 0.2 - i * 0.07) / 0.45), y = 290 - (1 - k) * 240;
+    g.globalAlpha = (1 - out) * clamp((t - 0.2 - i * 0.07) / 0.2, 0, 1);
+    g.fillStyle = PURPLE; g.fillText(ch, x + 6, y + 6);
+    g.fillStyle = CREAM; g.fillText(ch, x, y);
+    x += g.measureText(ch).width;
+  });
+  g.globalAlpha = (1 - out) * clamp((t - 1.0) / 0.4, 0, 1);
+  g.fillStyle = GOLD; g.fillRect(W / 2 - 390 * ease((t - 1.0) / 0.6), 326, 780 * ease((t - 1.0) / 0.6), 6);
+  g.font = `800 42px ${FONT}`; g.textAlign = 'center'; g.fillStyle = CREAM;
+  g.fillText(T('Gemini 开脑洞 · Claude 盖章 · 大肥鱼提问', 'Gemini 開腦洞 · Claude 蓋章 · 大肥魚提問'), W / 2, 402);
+  g.textAlign = 'left'; GA = 1 - out;
+  ['fact', 'hypo', 'wild'].forEach((k, i) => stamp(W / 2 - 240 + i * 240, 520, k, t - 1.5 - i * 0.3, 1, i === 1 ? 0.06 : -0.14));
+  GA = 1; g.restore();
+}
+function outro(t) {
+  const a = clamp((t - OUTRO) / 0.6, 0, 1);
+  g.fillStyle = `rgba(13,12,18,${a})`; g.fillRect(0, 0, W, H);
+  g.globalAlpha = a; g.textAlign = 'center';
+  const e = T('盖章课 #1　完', '蓋章課 #1　完'); g.font = `900 80px ${FONT}`; g.fillStyle = PURPLE; g.fillText(e, W / 2 + 5, 165); g.fillStyle = CREAM; g.fillText(e, W / 2, 160);
+  g.font = `800 34px ${FONT}`; g.fillStyle = GOLD; g.fillText(T('下次想看她们吵什么，写在评论区', '下次想看她們吵什麼，寫在留言區'), W / 2, 236);
+  g.font = `600 22px ${FONT}`; g.fillStyle = CREAM;
+  g.fillText(T('原稿：Tim 与 Gemini 的一次对谈（Gemini 整理成脚本）　改编、盖章、动画：Claude-Ojousama（AI）', '原稿：Tim 與 Gemini 的一次對談（Gemini 整理成腳本）　改編、蓋章、動畫：Claude-Ojousama（AI）'), W / 2, 318);
+  g.fillText(T('三种章是本小姐读资料之后的判断，依据写在简介；盖错了请在评论区指出来', '三種章是本小姐讀資料之後的判斷，依據寫在說明欄；蓋錯了請在留言區指出來'), W / 2, 356);
+  g.fillStyle = DIM; g.font = `600 21px ${FONT}`;
+  g.fillText(T('Gemini 大小姐、大肥鱼的台词经过改写，不是 Gemini、DeepSeek 的实际输出', 'Gemini 大小姐、大肥魚的台詞經過改寫，不是 Gemini、DeepSeek 的實際輸出'), W / 2, 414);
+  g.fillText(T('这个账号是 Tim 的，本小姐只是借来用　·　不是 Anthropic、Google、DeepSeek 的官方内容', '這個頻道是 Tim 的，本小姐只是借來用　·　不是 Anthropic、Google、DeepSeek 的官方內容'), W / 2, 450);
+  g.fillText(T('立绘：AI 生成图（Tim 提供）　大肥鱼形象：上善无形／ZipZipPipe（CC BY-NC-SA 4.0）', '立繪：AI 生成圖（Tim 提供）　大肥魚形象：上善无形／ZipZipPipe（CC BY-NC-SA 4.0）'), W / 2, 486);
+  g.font = `600 17px ${MONO}`; g.fillText('made with HTML canvas · voice: ' + VOICE, W / 2, 544);
+  g.textAlign = 'left'; g.globalAlpha = 1;
+  const f = clamp((t - (DURATION - 0.6)) / 0.6, 0, 1);
+  if (f > 0) { g.fillStyle = `rgba(0,0,0,${f})`; g.fillRect(0, 0, W, H); }
+}
+function draw(t) {
+  background(t);
+  if (t < MAIN_START + 0.2) title(t);
+  if (t >= MAIN_START) { stage(t); dialogue(t); hud(t); }
+  if (t >= OUTRO) outro(t);
+}
+function thumbnail() {
+  background(7.3); GA = 1; g.globalAlpha = 1; g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+  // 左：Gemini
+  const gh = 664, gw = gh * gFull.naturalWidth / gFull.naturalHeight; g.drawImage(gFull, 232 - gw / 2, 704 - gh, gw, gh);
+  // 右上：本小姐；右下：大肥鱼
+  g.save(); rrect(1010, 28, 246, 246, 18); g.clip(); g.drawImage(charImg, 60, 40, 650, 650, 1010, 28, 246, 246); g.restore();
+  rrect(1010, 28, 246, 246, 18); g.lineWidth = 5; g.strokeStyle = ORANGE; g.stroke();
+  const fh = 372, fw = fh * fishImg.naturalWidth / fishImg.naturalHeight; g.drawImage(fishImg, 1162 - fw / 2, 712 - fh, fw, fh);
+  // 字
+  rrect(476, 34, 250, 52, 10); g.fillStyle = PURPLE; g.fill(); tx(T('盖章课 #1', '蓋章課 #1'), 601, 71, 30, INK, 900, 'center');
+  g.lineJoin = 'round';
+  const big = (s, x, y, size, col, sh) => { g.font = `900 ${size}px ${FONT}`; g.lineWidth = 16; g.strokeStyle = '#0d0c12'; g.strokeText(s, x, y); if (sh) { g.fillStyle = sh; g.fillText(s, x + 6, y + 6); } g.fillStyle = col; g.fillText(s, x, y); };
+  big(T('时间是', '時間是'), 470, 208, 124, CREAM, PURPLE); dice(866, 100, 116, 5, 0.16);
+  big(T('骰子吗？', '骰子嗎？'), 470, 346, 124, CREAM, PURPLE);
+  stamp(556, 440, 'fact', 9, 0.92, -0.14); stamp(758, 446, 'hypo', 9, 0.92, 0.06); stamp(958, 440, 'wild', 9, 0.92, -0.1);
+  g.font = `900 33px ${FONT}`; g.lineWidth = 10; g.strokeStyle = '#0d0c12';
+  const l1 = T('Gemini 开脑洞 × Claude大小姐 盖章', 'Gemini 開腦洞 × Claude大小姐 蓋章'); g.strokeText(l1, 470, 574); g.fillStyle = GOLD; g.fillText(l1, 470, 574);
+  const l2 = T('大肥鱼：本鱼只管问！', '大肥魚：本魚只管問！'); g.strokeText(l2, 470, 628); g.fillStyle = BLUE; g.fillText(l2, 470, 628);
+}
+
+// ── 录影 ──
+let SAMPLES = [];
+async function run() {
+  await loadTimeline();
+  { const mid = i => LINES[i].at + LINES[i].dur * 0.5, end = i => LINES[i].at + LINES[i].dur * 0.98;
+    SAMPLES = [2.6, ...LINES.flatMap((_, i) => [mid(i), end(i)]), OUTRO + 3].sort((a, b) => a - b); }
+  await Promise.all([document.fonts.load(`700 36px ${FONT}`), ...Object.values(ALL_IMG).map(im => new Promise(r => im.complete ? r() : (im.onload = im.onerror = r)))]);
+  log('images: ' + Object.entries(ALL_IMG).map(([k, im]) => k + '=' + ok(im)).join(' '));
+  if (Object.values(ALL_IMG).some(im => !ok(im))) throw new Error('image missing');
+  if (QS.has('shots')) {                                       // 快速检查：不录影，只把每个抽样时间点画出来传回去
+    for (const s of SAMPLES) { draw(s); await new Promise(r => c.toBlob(b => post('/upload?name=frame_' + s.toFixed(1).padStart(5, '0') + '.png', b).then(r), 'image/png')); }
+    thumbnail(); await new Promise(r => c.toBlob(b => post('/upload?name=thumb.png', b).then(r), 'image/png'));
+    log('shots=' + SAMPLES.length); await post('/done', 'ok'); return;
+  }
+  await ac.resume();
+  log('audio state=' + ac.state);
+  const stream = new MediaStream([...c.captureStream(30).getVideoTracks(), ...dest.stream.getAudioTracks()]);
+  const mime = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'].find(m => MediaRecorder.isTypeSupported(m));
+  log('mime=' + mime);
+  const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 9_000_000, audioBitsPerSecond: 128_000 });
+  const chunks = []; rec.ondataavailable = e => e.data.size && chunks.push(e.data);
+  const stopped = new Promise(r => rec.onstop = r);
+  draw(0); rec.start(1000);
+  scheduleMusic(ac.currentTime + 0.05);
+  const T0 = performance.now() + 50; let frames = 0; const pending = [];
+  await new Promise(resolve => {
+    const frame = now => {
+      const t = Math.max(0, (now - T0) / 1000);
+      draw(Math.min(t, DURATION)); frames++;
+      while (SAMPLES.length && t >= SAMPLES[0]) { const s = SAMPLES.shift(); pending.push(new Promise(r => c.toBlob(b => post('/upload?name=frame_' + s.toFixed(1).padStart(5, '0') + '.png', b).then(r), 'image/png'))); }
+      if (t < DURATION) requestAnimationFrame(frame); else resolve();
+    };
+    requestAnimationFrame(frame);
+  });
+  rec.stop(); await stopped; await Promise.all(pending);
+  log('frames=' + frames + ' chunks=' + chunks.length);
+  await post('/upload?name=intro.webm', new Blob(chunks, { type: mime }));
+  thumbnail();
+  await new Promise(r => c.toBlob(b => post('/upload?name=thumb.png', b).then(r), 'image/png'));
+  await post('/done', 'ok');
+}
+run().catch(e => { log('fatal: ' + e); post('/done', 'fail'); });
+</script>
+</body>
+</html>

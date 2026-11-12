@@ -1,0 +1,46 @@
+{
+ "model": "Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice",
+ "torch": "2.14.1+cu126",
+ "candidates": [
+  {
+   "code": "Q1",
+   "speaker": "Vivian",
+   "note": "Vivian：明亮、帶一點銳利的年輕女聲（中文）",
+   "dur": 15.36,
+   "gen_seconds": 57.0,
+   "mean_db": -19.6,
+   "sr": 24000,
+   "vram_peak_mib": 2855
+  },
+  {
+   "code": "Q2",
+   "speaker": "Serena",
+   "note": "Serena：溫暖柔和的年輕女聲（中文）",
+   "dur": 12.24,
+   "gen_seconds": 42.8,
+   "mean_db": -25.6,
+   "sr": 24000,
+   "vram_peak_mib": 2855
+  },
+  {
+   "code": "Q3",
+   "speaker": "Ono_Anna",
+   "note": "Ono_Anna：俏皮輕快的女聲（母語日文，念中文）",
+   "dur": 15.76,
+   "gen_seconds": 55.2,
+   "mean_db": -24.5,
+   "sr": 24000,
+   "vram_peak_mib": 2876
+  },
+  {
+   "code": "Q4",
+   "speaker": "Sohee",
+   "note": "Sohee：情感豐富的女聲（母語韓文，念中文）",
+   "dur": 12.0,
+   "gen_seconds": 41.3,
+   "mean_db": -22.9,
+   "sr": 24000,
+   "vram_peak_mib": 2876
+  }
+ ]
+}

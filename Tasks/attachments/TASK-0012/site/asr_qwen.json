@@ -1,0 +1,173 @@
+[
+ {
+  "name": "lines_cn.json#2",
+  "ratio": 0.96,
+  "len_text": 28,
+  "len_heard": 28,
+  "text": "哼，算你问到点子上。这可不是瞎想，物理学里有好几派，都押在这上面！",
+  "heard": "哼,算你问到点子上,这可不是瞎想。物理学里有好几派都压在这上面。",
+  "flag": false
+ },
+ {
+  "name": "lines_cn.json#4",
+  "ratio": 1.0,
+  "len_text": 8,
+  "len_heard": 8,
+  "text": "谁、谁准你来监考的！",
+  "heard": "谁谁准你来监考的!",
+  "flag": false
+ },
+ {
+  "name": "lines_cn.json#5",
+  "ratio": 0.88,
+  "len_text": 33,
+  "len_heard": 33,
+  "text": "第一派，因果集理论。时空是一颗一颗的事件点。新的点随机长出来，时间才往前走。",
+  "heard": "歹意怕,因果及理论。时空是一颗一颗的事件点,新的点随机长出来,时间才往前走。",
+  "flag": false
+ },
+ {
+  "name": "lines_cn.json#6",
+  "ratio": 0.62,
+  "len_text": 26,
+  "len_heard": 26,
+  "text": "第二派，客观坍缩。量子态自己会随机坍缩，把可能，变成已经发生。",
+  "heard": "但你还, 天官贪说, 量子太, 自己会随机贪说, 把可能变成已经发生。",
+  "flag": true
+ },
+ {
+  "name": "lines_cn.json#8",
+  "ratio": 0.93,
+  "len_text": 27,
+  "len_heard": 27,
+  "text": "还有吉辛！他说小数点后面的数字，是随着时间，一位一位生出来的！",
+  "heard": "还有,集心。他说小数点后面的数字是随着时间一位一位生出来的。",
+  "flag": false
+ },
+ {
+  "name": "lines_cn.json#12",
+  "ratio": 1.0,
+  "len_text": 31,
+  "len_heard": 31,
+  "text": "掉坑里了吧！弯曲时空的是能量和动量。光没有静止质量，照样能把时空压弯！",
+  "heard": "掉坑里了吧。弯曲时空的是能量和动量。光没有静止质量,照样能把时空压弯。",
+  "flag": false
+ },
+ {
+  "name": "lines_cn.json#14",
+  "ratio": 1.0,
+  "len_text": 27,
+  "len_heard": 27,
+  "text": "所以把足够多的光挤在一起，光自己就能塌成黑洞，球状闪电黑洞！",
+  "heard": "所以把足够多的光挤在一起,光自己就能塌成黑洞,球状闪电黑洞。",
+  "flag": false
+ },
+ {
+  "name": "lines_cn.json#17",
+  "ratio": 0.93,
+  "len_text": 46,
+  "len_heard": 46,
+  "text": "这是物理学一百年的梦！多加一维空间，电磁力就从几何里长出来。弦论再把粒子的属性，藏进卷起来的高维空间。",
+  "heard": "这是物理觉一百年的梦, 多加一维空间,电磁力就从几何里长出来。闲论在把粒子的属性 藏进卷起来的高维空间。",
+  "flag": false
+ },
+ {
+  "name": "lines_cn.json#19",
+  "ratio": 1.0,
+  "len_text": 40,
+  "len_heard": 40,
+  "text": "那就拼起来。随机数是时钟，标签是代码，弯曲的时空是画面。质量大的地方时间慢，就是那里掉帧了！",
+  "heard": "那就拼起来。随机数是时钟,标签是代码,弯曲的时空是画面。质量大的地方,时间慢,就是那里掉帧了。",
+  "flag": false
+ },
+ {
+  "name": "lines_cn.json#21",
+  "ratio": 0.96,
+  "len_text": 12,
+  "len_heard": 11,
+  "text": "什、什么叫编的！这叫大胆假设！",
+  "heard": "什么叫编的?这叫大胆假设。",
+  "flag": false
+ },
+ {
+  "name": "lines_cn.json#23",
+  "ratio": 0.84,
+  "len_text": 31,
+  "len_heard": 31,
+  "text": "彭罗斯说，大脑里的量子态撑不住就坍缩，每坍缩一次，就是一点意识的火花。",
+  "heard": "彭洛斯说,大脑里的量子态撑不住就瘫缩,每瘫缩一次就是一点一时的火花。",
+  "flag": true
+ },
+ {
+  "name": "lines_cn.json#27",
+  "ratio": 1.0,
+  "len_text": 10,
+  "len_heard": 10,
+  "text": "哼。这一句，本小姐不反驳。",
+  "heard": "哼,这一句本小姐不反驳。",
+  "flag": false
+ },
+ {
+  "name": "lines_cn.json#29",
+  "ratio": 1.0,
+  "len_text": 18,
+  "len_heard": 18,
+  "text": "下次本小姐一定讲一个，让她盖不出脑洞的！",
+  "heard": "下次本小姐一定讲一个,让她盖不出脑洞的。",
+  "flag": false
+ },
+ {
+  "name": "lines_tw.json#2",
+  "ratio": 0.91,
+  "len_text": 27,
+  "len_heard": 26,
+  "text": "哼，算你问到重点。这可不是瞎想，物理学里有好几派，都押在这上面！",
+  "heard": "算你问到重点,这可不是瞎想。护理学里有好几派,都压在这上面。",
+  "flag": false
+ },
+ {
+  "name": "lines_tw.json#6",
+  "ratio": 0.65,
+  "len_text": 26,
+  "len_heard": 26,
+  "text": "第二派，客观塌缩。量子态自己会随机塌缩，把可能，变成已经发生。",
+  "heard": "但你哈,可没答所。量子泰自己会随机踏缩,把可能变成已经发生。",
+  "flag": true
+ },
+ {
+  "name": "lines_tw.json#12",
+  "ratio": 1.0,
+  "len_text": 32,
+  "len_heard": 32,
+  "text": "掉进坑里了吧！弯曲时空的是能量和动量。光没有静止质量，照样能把时空压弯！",
+  "heard": "掉进坑里了吧,弯曲时空的是能量和动量。光没有静止质量,照样能把时空压弯。",
+  "flag": false
+ },
+ {
+  "name": "lines_tw.json#14",
+  "ratio": 1.0,
+  "len_text": 26,
+  "len_heard": 26,
+  "text": "所以把够多的光挤在一起，光自己就能塌成黑洞，球状闪电黑洞！",
+  "heard": "所以把够多的光挤在一起,光自己就能塌成黑洞,球状闪电黑洞。",
+  "flag": false
+ },
+ {
+  "name": "lines_tw.json#19",
+  "ratio": 0.93,
+  "len_text": 40,
+  "len_heard": 40,
+  "text": "那就拼起来。乱数是时脉，标签是程式码，弯曲的时空是画面。质量大的地方时间慢，就是那里掉帧了！",
+  "heard": "那就拼起来。乱数是时脉,标签是城市码,弯曲的时空是画面。质量大的地方时间慢,就是那里掉针了。",
+  "flag": false
+ },
+ {
+  "name": "lines_tw.json#23",
+  "ratio": 1.0,
+  "len_text": 31,
+  "len_heard": 31,
+  "text": "潘洛斯说，大脑里的量子态撑不住就塌缩，每塌缩一次，就是一点意识的火花。",
+  "heard": "潘洛斯说,大脑里的量子态撑不住就塌缩,每塌缩一次,就是一点意识的火花。",
+  "flag": false
+ }
+]
