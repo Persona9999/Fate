@@ -1,0 +1,237 @@
+[
+ {
+  "key": "c17ddb4a4772c6b8",
+  "speaker": "Sohee",
+  "text": "哼，算你问到点子上。这可不是瞎想，物理学里有好几派，都押在这上面！",
+  "dur": 6.52,
+  "expect": 7.0,
+  "attempts": 1,
+  "ok": true,
+  "used": [
+   "lines_cn.json#2"
+  ]
+ },
+ {
+  "key": "738ecabe62f99d9a",
+  "speaker": "Sohee",
+  "text": "谁、谁准你来监考的！",
+  "dur": 2.08,
+  "expect": 2.0,
+  "attempts": 1,
+  "ok": true,
+  "used": [
+   "lines_cn.json#4",
+   "lines_tw.json#4"
+  ]
+ },
+ {
+  "key": "21a190ae17372ba5",
+  "speaker": "Sohee",
+  "text": "第一派，因果集理论。时空是一颗一颗的事件点。新的点随机长出来，时间才往前走。",
+  "dur": 9.65,
+  "expect": 8.2,
+  "attempts": 1,
+  "ok": true,
+  "used": [
+   "lines_cn.json#5",
+   "lines_tw.json#5"
+  ]
+ },
+ {
+  "key": "e73d14b2c98429f2",
+  "speaker": "Sohee",
+  "text": "第二派，客观坍缩。量子态自己会随机坍缩，把可能，变成已经发生。",
+  "dur": 7.02,
+  "expect": 6.5,
+  "attempts": 2,
+  "ok": true,
+  "used": [
+   "lines_cn.json#6"
+  ]
+ },
+ {
+  "key": "c95bb31287c9ae9f",
+  "speaker": "Sohee",
+  "text": "还有吉辛！他说小数点后面的数字，是随着时间，一位一位生出来的！",
+  "dur": 7.74,
+  "expect": 6.8,
+  "attempts": 1,
+  "ok": true,
+  "used": [
+   "lines_cn.json#8",
+   "lines_tw.json#8"
+  ]
+ },
+ {
+  "key": "f018d0814326002f",
+  "speaker": "Sohee",
+  "text": "掉坑里了吧！弯曲时空的是能量和动量。光没有静止质量，照样能把时空压弯！",
+  "dur": 9.28,
+  "expect": 7.8,
+  "attempts": 1,
+  "ok": true,
+  "used": [
+   "lines_cn.json#12"
+  ]
+ },
+ {
+  "key": "bc4b8308a165ee3d",
+  "speaker": "Sohee",
+  "text": "所以把足够多的光挤在一起，光自己就能塌成黑洞，球状闪电黑洞！",
+  "dur": 9.03,
+  "expect": 6.8,
+  "attempts": 1,
+  "ok": true,
+  "used": [
+   "lines_cn.json#14"
+  ]
+ },
+ {
+  "key": "60009257612c801d",
+  "speaker": "Sohee",
+  "text": "这是物理学一百年的梦！多加一维空间，电磁力就从几何里长出来。弦论再把粒子的属性，藏进卷起来的高维空间。",
+  "dur": 10.07,
+  "expect": 11.5,
+  "attempts": 1,
+  "ok": true,
+  "used": [
+   "lines_cn.json#17",
+   "lines_tw.json#17"
+  ]
+ },
+ {
+  "key": "3be41d2046b6eca0",
+  "speaker": "Sohee",
+  "text": "那就拼起来。随机数是时钟，标签是代码，弯曲的时空是画面。质量大的地方时间慢，就是那里掉帧了！",
+  "dur": 10.95,
+  "expect": 10.0,
+  "attempts": 1,
+  "ok": true,
+  "used": [
+   "lines_cn.json#19"
+  ]
+ },
+ {
+  "key": "9cedf09751c1c1c5",
+  "speaker": "Sohee",
+  "text": "什、什么叫编的！这叫大胆假设！",
+  "dur": 2.3,
+  "expect": 3.0,
+  "attempts": 1,
+  "ok": true,
+  "used": [
+   "lines_cn.json#21",
+   "lines_tw.json#21"
+  ]
+ },
+ {
+  "key": "ccd16a65f25b6aee",
+  "speaker": "Sohee",
+  "text": "彭罗斯说，大脑里的量子态撑不住就坍缩，每坍缩一次，就是一点意识的火花。",
+  "dur": 7.74,
+  "expect": 7.8,
+  "attempts": 1,
+  "ok": true,
+  "used": [
+   "lines_cn.json#23"
+  ]
+ },
+ {
+  "key": "0dfb8396950b85e7",
+  "speaker": "Sohee",
+  "text": "哼。这一句，本小姐不反驳。",
+  "dur": 3.1,
+  "expect": 2.5,
+  "attempts": 1,
+  "ok": true,
+  "used": [
+   "lines_cn.json#27",
+   "lines_tw.json#27"
+  ]
+ },
+ {
+  "key": "b214eb22f361346b",
+  "speaker": "Sohee",
+  "text": "下次本小姐一定讲一个，让她盖不出脑洞的！",
+  "dur": 3.69,
+  "expect": 4.5,
+  "attempts": 1,
+  "ok": true,
+  "used": [
+   "lines_cn.json#29",
+   "lines_tw.json#29"
+  ]
+ },
+ {
+  "key": "802e5f390a2b0366",
+  "speaker": "Sohee",
+  "text": "哼，算你问到重点。这可不是瞎想，物理学里有好几派，都押在这上面！",
+  "dur": 8.64,
+  "expect": 6.8,
+  "attempts": 1,
+  "ok": true,
+  "used": [
+   "lines_tw.json#2"
+  ]
+ },
+ {
+  "key": "c5d77806d3aa8df0",
+  "speaker": "Sohee",
+  "text": "第二派，客观塌缩。量子态自己会随机塌缩，把可能，变成已经发生。",
+  "dur": 8.25,
+  "expect": 6.5,
+  "attempts": 2,
+  "ok": true,
+  "used": [
+   "lines_tw.json#6"
+  ]
+ },
+ {
+  "key": "83fe1d36506dc91a",
+  "speaker": "Sohee",
+  "text": "掉进坑里了吧！弯曲时空的是能量和动量。光没有静止质量，照样能把时空压弯！",
+  "dur": 11.1,
+  "expect": 8.0,
+  "attempts": 1,
+  "ok": true,
+  "used": [
+   "lines_tw.json#12"
+  ]
+ },
+ {
+  "key": "146911ce223b4f35",
+  "speaker": "Sohee",
+  "text": "所以把够多的光挤在一起，光自己就能塌成黑洞，球状闪电黑洞！",
+  "dur": 6.93,
+  "expect": 6.5,
+  "attempts": 1,
+  "ok": true,
+  "used": [
+   "lines_tw.json#14"
+  ]
+ },
+ {
+  "key": "ac920448fbf068b3",
+  "speaker": "Sohee",
+  "text": "那就拼起来。乱数是时脉，标签是程式码，弯曲的时空是画面。质量大的地方时间慢，就是那里掉帧了！",
+  "dur": 10.26,
+  "expect": 10.0,
+  "attempts": 1,
+  "ok": true,
+  "used": [
+   "lines_tw.json#19"
+  ]
+ },
+ {
+  "key": "4160472c0cc82a72",
+  "speaker": "Sohee",
+  "text": "潘洛斯说，大脑里的量子态撑不住就塌缩，每塌缩一次，就是一点意识的火花。",
+  "dur": 7.81,
+  "expect": 7.8,
+  "attempts": 1,
+  "ok": true,
+  "used": [
+   "lines_tw.json#23"
+  ]
+ }
+]

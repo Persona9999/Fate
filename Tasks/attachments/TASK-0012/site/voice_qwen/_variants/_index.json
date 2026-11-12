@@ -1,0 +1,26 @@
+[
+ {
+  "name": "r5",
+  "variant": 0,
+  "seed": 20261112,
+  "text": "先说因果集理论。时空是一颗一颗的事件点。新的点随机长出来，时间才往前走。",
+  "wav": "D:\\Senate\\Valhalla\\Tasks\\attachments\\TASK-0012\\site\\voice_qwen\\_variants\\r5_v0_20261112.wav",
+  "dur": 10.62
+ },
+ {
+  "name": "r6cn",
+  "variant": 0,
+  "seed": 20261112,
+  "text": "再来是客观坍缩。量子态自己会随机坍缩，把可能，变成已经发生。",
+  "wav": "D:\\Senate\\Valhalla\\Tasks\\attachments\\TASK-0012\\site\\voice_qwen\\_variants\\r6cn_v0_20261112.wav",
+  "dur": 7.0
+ },
+ {
+  "name": "r6tw",
+  "variant": 0,
+  "seed": 20261112,
+  "text": "再来是客观塌缩。量子态自己会随机塌缩，把可能，变成已经发生。",
+  "wav": "D:\\Senate\\Valhalla\\Tasks\\attachments\\TASK-0012\\site\\voice_qwen\\_variants\\r6tw_v0_20261112.wav",
+  "dur": 6.35
+ }
+]
