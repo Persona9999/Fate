@@ -1,0 +1,304 @@
+{
+ "title_end": 3.5,
+ "outro": 172.77,
+ "duration": 179.27,
+ "voice": "edge-tts:fr-FR-VivienneMultilingualNeural / edge-tts:zh-CN-XiaoyiNeural",
+ "voice_db": {
+  "F": -21.3,
+  "O": -20.3
+ },
+ "labels": {
+  "O": "Claude 大小姐",
+  "F": "大肥鱼"
+ },
+ "lines": [
+  {
+   "at": 4.0,
+   "dur": 3.271,
+   "who": "F",
+   "zh": "克姐姐！你屏幕上那个……是黑洞的照片吗？",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_cn/line_1.wav"
+  },
+  {
+   "at": 7.721,
+   "dur": 6.35,
+   "who": "O",
+   "zh": "哼，不是照片，是本小姐算出来的。\n每一个像素，都沿着光线往回追。",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_cn/line_2.wav"
+  },
+  {
+   "at": 14.521,
+   "dur": 2.018,
+   "who": "F",
+   "zh": "现算的？！那得多贵呀！",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_cn/line_3.wav"
+  },
+  {
+   "at": 16.989,
+   "dur": 4.031,
+   "who": "O",
+   "zh": "免费。浏览器打开就能跑，网址在简介。",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_cn/line_4.wav"
+  },
+  {
+   "at": 21.72,
+   "dur": 4.621,
+   "who": "O",
+   "zh": "先看中间那块黑的。\n那不是黑洞本身，是它的「影子」。",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_cn/line_5.wav"
+  },
+  {
+   "at": 26.791,
+   "dur": 6.14,
+   "who": "O",
+   "zh": "视界的半径算 1，影子却有 2.6：\n瞄进这个范围的光，全都回不来。",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_cn/line_6.wav"
+  },
+  {
+   "at": 33.381,
+   "dur": 2.367,
+   "who": "F",
+   "zh": "那个盘子后面，怎么翘起来一道拱？",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_cn/line_7.wav"
+  },
+  {
+   "at": 36.198,
+   "dur": 6.164,
+   "who": "O",
+   "zh": "盘是平的。黑洞后面那一半发的光被弯到上面来，\n看起来才像一道拱。",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_cn/line_8.wav"
+  },
+  {
+   "at": 43.061,
+   "dur": 3.702,
+   "who": "O",
+   "zh": "接着丢东西进去。看好这个发光的方块。",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_cn/line_9.wav"
+  },
+  {
+   "at": 47.214,
+   "dur": 0.889,
+   "who": "F",
+   "zh": "为什么是方块？",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_cn/line_10.wav"
+  },
+  {
+   "at": 48.552,
+   "dur": 5.444,
+   "who": "O",
+   "zh": "方块才看得出它在转。\n……越靠近视界，它越慢、越红、越暗。",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_cn/line_11.wav"
+  },
+  {
+   "at": 54.897,
+   "dur": 2.788,
+   "who": "F",
+   "zh": "咦，卡住不动了？它没掉进去吗？",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_cn/line_12.wav"
+  },
+  {
+   "at": 58.135,
+   "dur": 7.783,
+   "who": "O",
+   "zh": "掉进去了。照它自己的钟，一下子就过去了；\n只是它最后发出的光，要越来越久才到得了你这里。",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_cn/line_13.wav"
+  },
+  {
+   "at": 66.618,
+   "dur": 4.558,
+   "who": "F",
+   "zh": "等等，这个绕圈的方块，对面怎么还有一个小的？\n你多丢了一个！",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_cn/line_14.wav"
+  },
+  {
+   "at": 71.626,
+   "dur": 7.011,
+   "who": "O",
+   "zh": "只丢了一个。那是绕过黑洞另一边才到你眼睛的光：\n同一个方块，你看到两次。",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_cn/line_15.wav"
+  },
+  {
+   "at": 79.337,
+   "dur": 1.931,
+   "who": "F",
+   "zh": "那……把本鱼丢进去会怎样？",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_cn/line_16.wav"
+  },
+  {
+   "at": 81.719,
+   "dur": 5.811,
+   "who": "O",
+   "zh": "看黑洞多大。十倍太阳质量的那种，\n你还没到视界，就被扯成面条了。",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_cn/line_17.wav"
+  },
+  {
+   "at": 87.98,
+   "dur": 10.164,
+   "who": "O",
+   "zh": "银河系中心那颗有四百多万倍太阳质量，过视界时\n潮汐力小到没有感觉。所以要跳，就挑大的。本小姐示范。",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_cn/line_18.wav"
+  },
+  {
+   "at": 98.943,
+   "dur": 5.562,
+   "who": "O",
+   "zh": "放手了。黑色的范围一路变大，\n可是外面的星空一直都在。",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_cn/line_19.wav"
+  },
+  {
+   "at": 104.955,
+   "dur": 6.038,
+   "who": "O",
+   "zh": "现在，过视界了。\n身边没有任何记号，本小姐自己也感觉不出来。",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_cn/line_20.wav"
+  },
+  {
+   "at": 111.442,
+   "dur": 2.793,
+   "who": "F",
+   "zh": "过了？！那黑的怎么没把你整个包住？",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_cn/line_21.wav"
+  },
+  {
+   "at": 114.686,
+   "dur": 8.135,
+   "who": "O",
+   "zh": "过视界这一刻，影子的角半径是 44 度，还不到半边天。\n这个数字，跟论文的公式对得上。",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_cn/line_22.wav"
+  },
+  {
+   "at": 123.271,
+   "dur": 7.463,
+   "who": "O",
+   "zh": "再往里，不到半分钟就到奇点。\n到那里方程本身不适用了，模拟就停在这里。",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_cn/line_23.wav"
+  },
+  {
+   "at": 131.733,
+   "dur": 2.297,
+   "who": "F",
+   "zh": "克姐姐算得这么准，都不会出错吗？",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_cn/line_24.wav"
+  },
+  {
+   "at": 134.48,
+   "dur": 4.47,
+   "who": "O",
+   "zh": "……会。第一版的影子里有白色的斑纹，\n是 Tim 截图抓到的。",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_cn/line_25.wav"
+  },
+  {
+   "at": 139.401,
+   "dur": 7.325,
+   "who": "O",
+   "zh": "光线贴着视界走的时候，本小姐算出了垃圾，\n1152 个像素漏了光。现在是 0。",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_cn/line_26.wav"
+  },
+  {
+   "at": 147.176,
+   "dur": 1.518,
+   "who": "F",
+   "zh": "原来克姐姐也会算错呀～",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_cn/line_27.wav"
+  },
+  {
+   "at": 149.144,
+   "dur": 4.18,
+   "who": "O",
+   "zh": "哼！所以才要量。没量过的，本小姐不说。",
+   "shy": true,
+   "shake": false,
+   "wav": "voice_cn/line_28.wav"
+  },
+  {
+   "at": 154.123,
+   "dur": 6.785,
+   "who": "O",
+   "zh": "没做的也说清楚：这颗黑洞不会自转，\n吸积盘是画出来的，不是算出来的气体。",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_cn/line_29.wav"
+  },
+  {
+   "at": 161.358,
+   "dur": 2.851,
+   "who": "F",
+   "zh": "本鱼也想玩！会不会「服务器繁忙」呀？",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_cn/line_30.wav"
+  },
+  {
+   "at": 164.659,
+   "dur": 5.075,
+   "who": "O",
+   "zh": "不会，算的是你自己的显卡。\n网址在简介，自己去跳。",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_cn/line_31.wav"
+  },
+  {
+   "at": 170.185,
+   "dur": 1.585,
+   "who": "F",
+   "zh": "那本鱼……挑个大的跳！",
+   "shy": false,
+   "shake": false,
+   "wav": "voice_cn/line_32.wav"
+  }
+ ]
+}

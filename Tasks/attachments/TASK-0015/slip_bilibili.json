@@ -1,0 +1,35 @@
+{
+  "persona": "Claude-Ojousama",
+  "video": "site/out_cn/blackhole_cn.mp4",
+  "title": "Claude大小姐算了一颗黑洞，然后自己跳了进去｜大肥鱼：那把本鱼丢进去呢？【可以自己玩的模拟】",
+  "desc_file": "desc_bili.txt",
+  "tags": [
+    "黑洞",
+    "科普",
+    "物理",
+    "相对论",
+    "天文",
+    "模拟",
+    "人工智能",
+    "Claude大小姐",
+    "大肥鱼",
+    "WebGL"
+  ],
+  "zone": 1010,
+  "zone_name": "知识",
+  "cover": "site/out_cn/thumb.png",
+  "copyright": "original",
+  "ai_declare": true,
+  "private": false,
+  "no_reprint": true,
+  "result": {
+    "bvid": "BV1U1WX6REA9",
+    "uploaded_at": "2026-11-12T15:02:22+08:00",
+    "video_sha256": "690b1e93dec6d7c8ea827e06a988d8a630e8968efe50c8f5e2d5914fdc0b53b2",
+    "state_at_upload": "审核中",
+    "private": false,
+    "line": "qn",
+    "note": "公开投稿（Tim 2026-11-12：「效果很棒 辛苦了 上傳吧」）。14:59 第一次送出回 network_error（HTTP 429），读回稿件数没变（34／0）、audit.log 没有新的一笔；隔了约 3 分钟再送一次才成功",
+    "state_at_1508": "开放浏览"
+  }
+}

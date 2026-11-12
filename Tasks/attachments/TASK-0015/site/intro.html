@@ -1,0 +1,590 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>跳进黑洞，会看到什么？</title>
+<style>html,body{margin:0;background:#000;overflow:hidden}canvas{display:block}</style>
+</head>
+<body>
+<canvas id="c" width="1280" height="720"></canvas>
+<script src="bh/physics.js"></script>
+<script src="bh/shader.js"></script>
+<script src="bh/renderer.js"></script>
+<script src="bh/camera.js"></script>
+<script src="bh/bodies.js"></script>
+<script>
+// 「跳进黑洞，会看到什么？」——本小姐（Claude）讲、大肥鱼问。
+// 上面 548px 的画面是黑洞模拟本身：bh/ 底下是 tim099/BlackHole 的 physics／shader／renderer／camera／bodies（原样抄过来，没有改），
+// 每一格都用显卡沿着光线往回追，当场算；这一页只负责摆镜头、丢东西、在上面画标注。下面是对话框。
+// 模拟照影片时间一格一格往前推（每格 1/30 秒）⇒ 「只抽格」（?shots=1）与正式录影看到的是同一个状态。
+// 台词与时间轴从 timeline_cn.json 来。录影用 MediaRecorder（canvas ＋ WebAudio 合成音）；录完把 intro.webm、thumb.png、抽样画面 POST 回本机服务器。
+// ?measure=1：不录影，只把影片里用到的数字量一遍、印出来（README 的依据）。
+// ⚠ 大肥鱼的台词是本小姐写的，不是 DeepSeek 的实际输出。
+const QS = new URLSearchParams(location.search), LANG = QS.get('lang') === 'tw' ? 'tw' : 'cn';
+const T = (cn, tw) => LANG === 'tw' ? tw : cn;                  // 画面上的字：?lang=cn 简体（B 站）、?lang=tw 繁中（YouTube）。语音两版共用，繁中版的字幕照念的字转成繁体
+const W = 1280, H = 720, SH = 548; let DURATION = 180;
+const ORANGE = '#D97757', CREAM = '#F3EDE6', INK = '#16141d', BLUE = '#6fb6f2', RED = '#e0655c', GOLD = '#e6bd62', GREEN = '#5fce8a', PINK = '#f07ab0', DIM = 'rgba(243,237,230,0.66)';
+const FONT = LANG === 'tw' ? '"Microsoft JhengHei","Noto Sans TC","PingFang TC","Microsoft YaHei",sans-serif' : '"Microsoft YaHei","Noto Sans SC","PingFang SC","Microsoft JhengHei",sans-serif';
+const MONO = 'Consolas,"Cascadia Mono",' + FONT;
+const c = document.getElementById('c'), g = c.getContext('2d');
+const post = (path, body) => fetch(path, { method: 'POST', body });
+const log = m => post('/log', String(m));
+window.onerror = (m, s, l) => log('error: ' + m + ' @' + l);
+
+// ── 台词 ──
+let LINES = [], LABELS = { O: 'Claude', F: '' }, VOICE = '';
+const MAIN_START = 3.5; let OUTRO = 170;
+const QUIET = [18, 22];                                        // 第 19～23 句（从 0 数是 18～22）：自己掉进去那一段，配乐换成长音
+const N_LINES = 32;
+async function loadTimeline() {
+  const r = await fetch('timeline_' + LANG + '.json'); if (!r.ok) throw new Error('timeline ' + r.status);
+  const tl = await r.json();
+  LINES = tl.lines.map(L => ({ at: L.at, dur: L.dur, who: L.who, text: L.zh, shy: L.shy, shake: L.shake, cps: [...L.zh].length / Math.max(0.6, L.dur * 0.85) }));
+  OUTRO = tl.outro; DURATION = tl.duration; LABELS = tl.labels || LABELS; VOICE = tl.voice || '';
+  if (LINES.length !== N_LINES) throw new Error('lines ' + LINES.length + ' != ' + N_LINES);
+  log('timeline(' + LANG + '): ' + LINES.length + ' lines, duration ' + DURATION);
+}
+const at = i => LINES[i].at, end = i => LINES[i].at + LINES[i].dur;
+
+// ── 音：WebAudio 只接到录影用的 destination ──
+const ac = new AudioContext();
+const dest = ac.createMediaStreamDestination();
+const master = ac.createGain(); master.gain.value = 1; master.connect(dest);
+function note(freq, t0, dur, type, vol) {
+  const o = ac.createOscillator(), e = ac.createGain();
+  o.type = type; o.frequency.value = freq;
+  e.gain.setValueAtTime(0, t0);
+  e.gain.linearRampToValueAtTime(vol, t0 + 0.01);
+  e.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(e); e.connect(master); o.start(t0); o.stop(t0 + dur + 0.02);
+}
+function thump(t0, v) {
+  const o = ac.createOscillator(), e = ac.createGain(); o.type = 'sine';
+  o.frequency.setValueAtTime(150, t0); o.frequency.exponentialRampToValueAtTime(52, t0 + 0.16);
+  e.gain.setValueAtTime(0.0001, t0); e.gain.linearRampToValueAtTime(0.11 * v, t0 + 0.008); e.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.26);
+  o.connect(e); e.connect(master); o.start(t0); o.stop(t0 + 0.3);
+}
+const hz = m => 440 * Math.pow(2, (m - 69) / 12);
+function scheduleMusic(t0) {
+  // Am - F - C - G，每个和弦 2.4 秒的琶音（三角波）＋低音。掉进去那一段不弹琶音，换成很小声的长音。
+  const s0 = at(QUIET[0]) - 0.6, s1 = at(QUIET[1] + 1) - 0.4;
+  const chords = [[57, 60, 64, 69], [53, 57, 60, 65], [60, 64, 67, 72], [55, 59, 62, 67]];
+  const order = [0, 1, 2, 3, 2, 1, 2, 1];
+  for (let i = 0; i * 0.3 < DURATION - 1.5; i++) {
+    const tt = i * 0.3; if (tt > s0 && tt < s1) continue;
+    const ch = chords[Math.floor(i / 8) % 4], t = t0 + tt;
+    note(hz(ch[order[i % 8]]), t, 0.26, 'triangle', 0.02);
+    if (i % 4 === 0) note(hz(ch[0] - 12), t, 0.5, 'sine', 0.02);
+  }
+  [33, 45, 52].forEach((m, k) => {
+    const o = ac.createOscillator(), e = ac.createGain(), v = k ? 0.024 : 0.03; o.type = 'sine'; o.frequency.value = hz(m);
+    e.gain.setValueAtTime(0, t0 + s0); e.gain.linearRampToValueAtTime(v, t0 + s0 + 2.5);
+    e.gain.setValueAtTime(v, t0 + s1 - 2.0); e.gain.linearRampToValueAtTime(0, t0 + s1 + 0.4);
+    o.connect(e); e.connect(master); o.start(t0 + s0); o.stop(t0 + s1 + 0.5);
+  });
+  thump(t0 + T_CROSS, 1);                                      // 过视界那一刻
+  [1.0, 1.4].forEach(s => thump(t0 + s, 0.5));
+  master.gain.setValueAtTime(1, t0 + DURATION - 2.6);
+  master.gain.linearRampToValueAtTime(0.0001, t0 + DURATION - 0.3);
+}
+
+// ── 小工具 ──
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const ease = x => 1 - Math.pow(1 - clamp(x, 0, 1), 3);
+const io = x => { x = clamp(x, 0, 1); return x * x * (3 - 2 * x); };
+const back = x => { x = clamp(x, 0, 1); const s = 1.7; return 1 + (s + 1) * Math.pow(x - 1, 3) + s * Math.pow(x - 1, 2); };
+let GA = 1;
+const al = a => { g.globalAlpha = GA * clamp(a, 0, 1); };
+function rrect(x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+function wrap(text, maxW) {
+  const out = []; let cur = '';
+  const noStart = '、。，．！？：；」』）…～—!?.,)';
+  const latin = /[A-Za-z0-9._\/#-]/;
+  for (const ch of text) {
+    if (ch === '\n') { out.push(cur); cur = ''; continue; }
+    if (g.measureText(cur + ch).width > maxW && cur && !noStart.includes(ch)) {
+      let cut = cur.length;
+      if (latin.test(ch)) { while (cut > 0 && latin.test(cur[cut - 1])) cut--; if (cut === 0) cut = cur.length; }
+      out.push(cur.slice(0, cut)); cur = cur.slice(cut) + ch;
+    } else cur += ch;
+  }
+  if (cur) out.push(cur); return out;
+}
+function heart(x, y, px, color) {
+  const m = ['0110110', '1111111', '1111111', '0111110', '0011100', '0001000'];
+  g.fillStyle = color;
+  m.forEach((row, r) => [...row].forEach((v, k) => { if (v === '1') g.fillRect(x + k * px, y + r * px, px, px); }));
+}
+function tx(s, x, y, size, col, weight, align, font) {
+  g.font = `${weight || 700} ${size}px ${font || FONT}`; g.fillStyle = col; g.textAlign = align || 'left'; g.fillText(s, x, y); g.textAlign = 'left';
+}
+function panel(x, y, w, h, col, label) {                         // 半透明的深色底板；label ＝ 左上角的小标题
+  rrect(x, y, w, h, 12); g.fillStyle = 'rgba(14,12,20,0.84)'; g.fill(); g.lineWidth = 2.5; g.strokeStyle = col || 'rgba(243,237,230,0.3)'; g.stroke();
+  if (label) { g.font = `800 20px ${FONT}`; const tw = g.measureText(label).width; rrect(x + 16, y - 16, tw + 28, 34, 8); g.fillStyle = col; g.fill(); g.fillStyle = INK; g.fillText(label, x + 30, y + 8); }
+}
+function tag(s, x, y, size, col, align) {                      // 一行字＋深色底（盖在模拟画面上也看得清）；x 是左缘（align='center' 时是中心）
+  g.font = `800 ${size}px ${FONT}`; const w = g.measureText(s).width + 24, h = size + 16, x0 = align === 'center' ? x - w / 2 : align === 'right' ? x - w : x;
+  rrect(x0, y - h + 8, w, h, 8); g.fillStyle = 'rgba(14,12,20,0.82)'; g.fill();
+  g.fillStyle = col || CREAM; g.textAlign = 'left'; g.fillText(s, x0 + 12, y); return w;
+}
+function leader(x0, y0, x1, y1, col) { g.strokeStyle = col; g.lineWidth = 2.5; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); g.beginPath(); g.arc(x1, y1, 4.5, 0, 6.283); g.fillStyle = col; g.fill(); }
+function chip(x, y, text, k, size, col) {
+  size = size || 26; col = col || ORANGE;
+  g.font = `800 ${size}px ${FONT}`; const tw = g.measureText(text).width, w = tw + 36, h = size + 26;
+  if (k <= 0) return w;
+  const s = back(k); g.save(); g.translate(x + w / 2, y + h / 2); g.scale(s, s);
+  rrect(-w / 2, -h / 2, w, h, h / 2); g.fillStyle = 'rgba(14,12,20,0.88)'; g.fill(); g.lineWidth = 3; g.strokeStyle = col; g.stroke();
+  g.fillStyle = CREAM; g.textAlign = 'center'; g.fillText(text, 0, size * 0.36); g.textAlign = 'left';
+  g.restore(); return w;
+}
+
+const load = src => { const im = new Image(); im.src = src; return im; };
+const qImg = load('avatar_q.png'), charImg = load('character.jpg'), fishImg = load('fish_full.png'), fishHead = load('fish_head.png');
+const ALL_IMG = { qImg, charImg, fishImg, fishHead };
+const ok = im => im.complete && im.naturalWidth > 0;
+const WHO = {
+  O: { col: ORANGE, img: qImg, bg: '#2a2230', right: false },
+  F: { col: BLUE, img: fishHead, bg: '#e4f1fd', right: true },
+};
+
+// ════════════════════ 黑洞模拟 ════════════════════
+const PH = BH.Physics, DEG = Math.PI / 180, SIM_DT = 1 / 30;
+const mk = (w, h) => { const cv = document.createElement('canvas'); cv.width = w; cv.height = h; return cv; };
+const glc = mk(W, SH), R = new BH.Renderer(glc), gl = R.gl;
+const holes = [PH.makeHole({ rs: 1 })];
+let cam = new BH.Camera();
+const bodies = new BH.Bodies(R, BH.Renderer.TRAJ_N, BH.Renderer.MAX_ROWS);
+const sim2d = mk(W, SH), sctx = sim2d.getContext('2d'), snap = mk(W, SH), snctx = snap.getContext('2d'), cmpA = mk(W, SH), cactx = cmpA.getContext('2d');
+const SGRA = 4.3e6, SEC = 2.953 * SGRA / 299792.458;              // 人马座 A*：模拟的 1 个时间单位（rs/c）＝几秒
+const EPS12 = Math.sqrt(1 - 1 / 12);                              // 从 12 rs 静止放手：E/m
+
+function buildFrame(cf, o, w, h) {
+  const rc = Math.hypot(cf.pos[0], cf.pos[1], cf.pos[2]), DT = BH.Renderer.DISK_T;
+  let dt = cam.t % DT; if (dt < 0) dt += DT;
+  return { width: w || W, height: h || SH, tanFov: Math.tan(cam.fov * DEG / 2), camPos: cf.pos, P: cf.P, camInside: cf.nearHorizon, energyTest: o.energyTest !== false,
+    holes, far: Math.max(60, rc * 1.08 + 6), maxSteps: 300, stepScale: 1,
+    disk: { on: !!o.disk, rin: 3, rout: 12, brightness: 2.0, thick: 0.08 }, diskTime: dt,
+    flags: [1, o.grid ? 1 : 0, 1, 1], exposure: o.exposure || 1, beaconPeriod: 2.0, ghost: o.ghost !== false, debug: !!o.debug,
+    bodies: o.noBodies ? [] : bodies.uniforms(cam.t, cf.nearHorizon || cf.ratio < 3) };
+}
+// 影子的角半径（从「正对黑洞」的方向量）—— Schneider & Perlick, Gen. Rel. Grav. 50, 58 (2018) 式 (32)（悬停）、式 (33)（径向自由落下）；m = rs/2 = 0.5
+function psiStatic(r) { const sn = Math.sqrt(27) * 0.5 / r * Math.sqrt(1 - 1 / r); return r >= 1.5 ? Math.asin(sn) : Math.PI - Math.asin(sn); }
+function psiFalling(r, eps) {
+  const m = 0.5, k = 27 * m * m / (r * r), w = eps * eps - 1 + 2 * m / r;
+  const root = Math.sqrt(Math.max(0, w)) * Math.sqrt(Math.max(0, 1 - k * (1 - 2 * m / r)));
+  return Math.asin(Math.min(1, Math.sqrt(27) * m / r * (eps + (r > 3 * m ? -1 : 1) * root) / (1 + k * w)));
+}
+const angPx = a => Math.tan(a) / Math.tan(cam.fov * DEG / 2) * SH / 2;      // 离画面中心几度 ⇒ 几个像素
+// 潮汐力：身高 2 米的人头跟脚的加速度差，单位 g。Δa = c² rs L / r³（跟模拟网页右上角的读数是同一条式子）
+function tidalG(r, msun) { const m = 2953.25 * msun; return 8.98755e16 * m * 2 / Math.pow(r * m, 3) / 9.80665; }
+const fmtG = v => v >= 1e6 ? T('约 ', '約 ') + Math.round(v / 1e6) * 100 + T(' 万 g', ' 萬 g') : v >= 1e4 ? T('约 ', '約 ') + Math.round(v / 1e4) + T(' 万 g', ' 萬 g') : v >= 10 ? Math.round(v) + ' g' : v >= 0.1 ? v.toFixed(1) + ' g' : v >= 0.001 ? v.toFixed(3) + ' g' : v >= 0.00005 ? v.toFixed(4) + ' g' : '不到 0.0001 g';
+const fmtSec = s => s < 100 ? s.toFixed(1) + ' 秒' : (s / 60).toFixed(1) + T(' 分钟', ' 分鐘');
+function setCam(r, thetaDeg, phi, fov) { cam = new BH.Camera(); cam.r = r; cam.theta = thetaDeg * DEG; cam.phi = phi; cam.fov = fov; }
+const camR = () => cam.mode === 'static' ? cam.r : Math.hypot(cam.s[0], cam.s[1], cam.s[2]);
+function fallTo(rTarget) {                                      // 从现在悬停的位置静止放手，掉到半径 rTarget
+  cam.startFall(holes, 0, 0);
+  let n = 0; while (cam.mode === 'fall' && camR() > rTarget + 0.3 && n++ < 100000) cam.advance(holes, 0.05);
+  while (cam.mode === 'fall' && camR() > rTarget && n++ < 200000) cam.advance(holes, 0.001);
+}
+let FALL = null;                                                // 从 12 rs 静止放手：到视界、到模拟终点（r = 0.02 rs）各要多少自己的时间
+function fallPlan() {
+  if (FALL) return FALL;
+  const keep = cam; setCam(12, 74, 0.6, 100); cam.startFall(holes, 0, 0);
+  let n = 0; while (cam.mode === 'fall' && n++ < 400000) cam.advance(holes, 0.02);
+  FALL = { tc: cam.crossTau - cam.fallTau0, te: cam.tau - cam.fallTau0 }; cam = keep; return FALL;
+}
+// 低解析度再画两次、相减，找出「画面上哪里因为这个开关而不一样」的重心 ⇒ 方块（或它的第二个像）在画面上的位置
+const LW = 640, LH = 274;
+function lowres(o) { const px = new Uint8Array(LW * LH * 4); R.draw(buildFrame(cam.frame(holes), o, LW, LH)); gl.readPixels(0, 0, LW, LH, gl.RGBA, gl.UNSIGNED_BYTE, px); return px; }
+function centroid(a, b) {
+  let sx = 0, sy = 0, sw = 0, n = 0;
+  for (let y = 0; y < LH; y++) for (let x = 0; x < LW; x++) { const i = (y * LW + x) * 4, d = Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]); if (d > 36) { sx += x * d; sy += y * d; sw += d; n++; } }
+  return n ? { x: (sx / sw + 0.5) * W / LW, y: SH - (sy / sw + 0.5) * SH / LH, n } : null;
+}
+function peakBlob(a, b) {
+  let best = 0, bx = 0, by = 0, n = 0; const D = new Uint16Array(LW * LH);
+  for (let i = 0, j = 0; j < LW * LH; i += 4, j++) { const d = Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]); D[j] = d; if (d > 36) n++; if (d > best) { best = d; bx = j % LW; by = (j / LW) | 0; } }
+  if (best <= 36) return null;
+  let sx = 0, sy = 0, sw = 0; const q = 14;
+  for (let y = Math.max(0, by - q); y <= Math.min(LH - 1, by + q); y++) for (let x = Math.max(0, bx - q); x <= Math.min(LW - 1, bx + q); x++) { const d = D[y * LW + x]; if (d > 36) { sx += x * d; sy += y * d; sw += d; } }
+  return { x: (sx / sw + 0.5) * W / LW, y: SH - (sy / sw + 0.5) * SH / LH, n };
+}
+function fullDraw(o, ctx) { R.draw(buildFrame(cam.frame(holes), o)); (ctx || sctx).drawImage(glc, 0, 0); }
+function zoomInset(x, y, size, src, k, col, label, from) {       // 把模拟画面（或 from 那张）上 src 附近放大 k 倍，画在 (x,y) 的方框里
+  const s = size / k; g.save(); rrect(x, y, size, size, 10); g.clip(); g.imageSmoothingEnabled = true; g.fillStyle = '#000'; g.fillRect(x, y, size, size);
+  g.drawImage(from || sim2d, src.x - s / 2, src.y - s / 2, s, s, x, y, size, size); g.restore();
+  rrect(x, y, size, size, 10); g.lineWidth = 3; g.strokeStyle = col; g.stroke(); tag(label, x + size / 2, y + size + 30, 20, col, 'center');
+}
+function ring(p, r, col) { g.strokeStyle = col; g.lineWidth = 2.5; g.setLineDash([7, 6]); g.beginPath(); g.arc(p.x, p.y, r, 0, 6.283); g.stroke(); g.setLineDash([]); }
+
+// 从「眼睛」往外射的一排光（真的照测地线算的）：红的被抓住，蓝的到天空。俯视图。
+let RAYS = null;
+function buildRays() {
+  const eye = [12, 0, 0], ks = [0.02, 0.3, 0.6, 0.88, 1.06, 1.3, 1.75, 2.4], out = [];
+  ks.forEach(k => [1, -1].forEach(sg => {
+    const a = sg * Math.asin(k * PH.B_CRIT * Math.sqrt(1 - 1 / 12) / 12), s = PH.launchLocal(holes, eye, [-1, 0, 0], [0, 0, 1], a, 1, 'light');
+    const tr = PH.trace(holes, s, { tSpan: 60, rMax: 15, frac: 0.02, maxSteps: 20000 });
+    out.push({ X: tr.X, Z: tr.Z, n: tr.n, hit: tr.fate === 'singularity' });
+  }));
+  RAYS = out;
+}
+function rayInset(x, y, k) {                                    // k：0→1 光线长出来
+  const w = 340, h = 232, sc = 16.5, ox = x + 118, oy = y + h / 2 + 8, X = v => ox + v * sc, Y = v => oy + v * sc;
+  panel(x, y, w, h, BLUE, T('俯视：从眼睛往回追的光线', '俯視：從眼睛往回追的光線'));
+  g.save(); rrect(x + 3, y + 3, w - 6, h - 6, 10); g.clip();
+  RAYS.forEach(r => { const n = Math.max(2, Math.floor(r.n * clamp(k, 0, 1))); g.beginPath(); for (let i = 0; i < n; i++) { i ? g.lineTo(X(r.X[i]), Y(r.Z[i])) : g.moveTo(X(r.X[i]), Y(r.Z[i])); }
+    g.strokeStyle = r.hit ? 'rgba(224,101,92,0.95)' : 'rgba(111,182,242,0.95)'; g.lineWidth = 2; g.stroke(); });
+  g.beginPath(); g.arc(X(0), Y(0), sc, 0, 6.283); g.fillStyle = '#000'; g.fill(); g.lineWidth = 2; g.strokeStyle = GOLD; g.stroke();
+  g.beginPath(); g.arc(X(12), Y(0), 6, 0, 6.283); g.fillStyle = CREAM; g.fill();
+  g.restore();
+  tx('眼睛', X(12) - 8, Y(0) - 14, 17, CREAM, 700, 'right'); tx('黑洞', X(0), Y(0) + 40, 17, GOLD, 700, 'center');
+  tx(T('红：被抓住', '紅：被抓住'), x + 16, y + h - 14, 18, RED, 800); tx(T('蓝：到天空', '藍：到天空'), x + 130, y + h - 14, 18, BLUE, 800);
+}
+
+// ── 镜头表（时间轴载入之后才排得出来）──
+let SHOTS = [], T_FALL = 0, T_CROSS = 0, T_END = 0;
+let CUR_LI = -1, CUR_P = 0, CUR_T = 0;
+const LP = i => CUR_LI > i ? 1 : CUR_LI === i ? CUR_P : 0;      // 第 i 句念到几成（念完之后一直是 1）
+const since = (i, f) => CUR_T - (at(i) + (f || 0) * LINES[i].dur); // 第 i 句念到 f 成之后过了几秒
+const fade = (s, d) => clamp(s / (d || 0.35), 0, 1);
+const orbit = tv => { cam.phi = 0.6 + 0.022 * tv; cam.t = 2 * tv; };
+function pchip(xs, ys, x) {                                     // 三个点的单调三次内插
+  const d0 = (ys[1] - ys[0]) / (xs[1] - xs[0]), d1 = (ys[2] - ys[1]) / (xs[2] - xs[1]), m = [d0, d0 * d1 > 0 ? 2 * d0 * d1 / (d0 + d1) : 0, d1];
+  const i = x < xs[1] ? 0 : 1, h = xs[i + 1] - xs[i], t = clamp((x - xs[i]) / h, 0, 1), t2 = t * t, t3 = t2 * t;
+  return (2 * t3 - 3 * t2 + 1) * ys[i] + (t3 - 2 * t2 + t) * h * m[i] + (-2 * t3 + 3 * t2) * ys[i + 1] + (t3 - t2) * h * m[i + 1];
+}
+function defineShots() {
+  T_FALL = at(18) - 0.35; T_CROSS = at(19) + 0.95; T_END = end(22) - 0.2;
+  const fp = fallPlan();
+  log('fall plan: 到视界 ' + fp.tc.toFixed(3) + ' rs/c、到终点 ' + fp.te.toFixed(3) + ' rs/c；视界→终点 ' + (fp.te - fp.tc).toFixed(4) + ' rs/c ＝ ' + ((fp.te - fp.tc) * SEC).toFixed(1) + ' 秒（人马座 A*，1 rs/c ＝ ' + SEC.toFixed(2) + ' 秒）');
+  SHOTS = [
+    { name: 'hook', t0: 0, o: { disk: true }, init() { setCam(14, 76, 0.6, 50); }, step(ts, tv) { orbit(tv); },
+      over() {} },
+    { name: 'shadow', t0: at(4) - 0.3, o: { grid: true }, init() { setCam(14, 76, 0.6, 50); }, step(ts, tv) { orbit(tv); },
+      over() {
+        const cx = W / 2, cy = SH / 2, Rs = angPx(psiStatic(14)), Rh = angPx(Math.asin(1 / 14)), a = LP(4), b = LP(5);
+        al((a - 0.5) / 0.12); g.strokeStyle = GOLD; g.lineWidth = 3; g.beginPath(); g.arc(cx, cy, Rs + 5, 0, 6.283); g.stroke();
+        leader(cx + 250, cy - 150, cx + (Rs + 5) * 0.72, cy - (Rs + 5) * 0.7, GOLD); tag('「影子」', cx + 250, cy - 152, 30, GOLD);
+        al((b - 0.02) / 0.12); g.strokeStyle = CREAM; g.lineWidth = 2.5; g.setLineDash([8, 7]); g.beginPath(); g.arc(cx, cy, Rh, 0, 6.283); g.stroke(); g.setLineDash([]);
+        tx(T('视界', '視界'), cx, cy + 8, 22, CREAM, 800, 'center'); tx(T('半径 1', '半徑 1'), cx, cy + 32, 17, DIM, 700, 'center');
+        al((b - 0.22) / 0.12); tag(T('半径 ≈ 2.6（＝ 3√3 ∕ 2）', '半徑 ≈ 2.6（＝ 3√3 / 2）'), cx + 250, cy - 106, 24, CREAM);
+        al((b - 0.5) / 0.12); tag(T('瞄进影子里的光，全都回不来', '瞄進影子裡的光，全都回不來'), cx, SH - 34, 26, CREAM, 'center');
+      } },
+    { name: 'arch', t0: at(6) - 0.3, o: { disk: true }, init() { setCam(14, 76, 0.6, 50); }, step(ts, tv) { orbit(tv); },
+      over() {
+        const a = LP(6), b = LP(7), cx = W / 2;
+        al(a / 0.2); g.strokeStyle = BLUE; g.lineWidth = 3; g.setLineDash([10, 8]); g.beginPath(); g.ellipse(cx, 210, 250, 150, 0, Math.PI * 1.08, Math.PI * 1.92); g.stroke(); g.setLineDash([]);
+        tag(T('这道拱？', '這道拱？'), cx + 262, 96, 28, BLUE);
+        al((b - 0.12) / 0.12); const tw = tag(T('黑洞「后面」那一半盘', '黑洞「後面」那一半盤'), 24, 84, 26, GOLD); leader(24 + tw + 4, 74, cx - 150, 108, GOLD);
+        al((b - 0.5) / 0.12); tag(T('光被弯到上面来，才到你眼睛', '光被彎到上面來，才到你眼睛'), 24, 130, 22, CREAM);
+        al((b - 0.3) / 0.12); leader(cx + 330, 470, cx + 150, 430, GOLD); tag(T('前面这一半', '前面這一半'), cx + 334, 478, 24, GOLD);
+      } },
+    { name: 'drop', t0: at(8) - 0.3, o: { grid: true }, m: {},
+      init() { setCam(16, 62, 0.6, 36); this.m = {}; const cf = cam.frame(holes); bodies.colorIdx = 0;       // 颜色照顺序轮，这里固定用第一个（黄）
+        bodies.spawn(holes, { kind: 'ball', shape: 'cube', r0: 9, phi0: 0.6 + 2.0, incl: 0.25, speed: 0, alpha: 0, mass: 0.08 }, cam.t, cf.pos, cf.insideHorizon);
+        cam.advance(holes, 19); },                              // 镜头切进来的时候它已经掉了一段；之后整段都是同一个速度（影片 1 秒 ＝ 模拟 2 个时间单位）
+      step() { cam.advance(holes, SIM_DT * 2.0); },
+      render() {                                                 // 方块越靠近视界越暗 ⇒ 右上角的放大框把曝光调高（倍数写在框下面），主画面不动
+        const b = bodies.list[0], rs = b && b.seen ? Math.hypot(b.seen.x, b.seen.y, b.seen.z) : 9, E = clamp(Math.exp(2.9 * (3 - rs)), 1, 300), oo = { ...this.o, ghost: false, exposure: E };
+        const A = lowres(oo), B = lowres({ ...oo, noBodies: true }), p = centroid(A, B); if (p) this.m.p = p; this.m.vis = p ? p.n : 0; this.m.E = E; this.m.rs = rs;
+        if (E > 1.05) fullDraw({ ...this.o, exposure: E }, cactx); fullDraw(this.o); },
+      over() {
+        const b = bodies.list[0], p = this.m.p;
+        const E = this.m.E || 1;
+        if (p) { al(1); ring(p, 34, GOLD); const gone = !this.m.vis;
+          zoomInset(W - 20 - 210, 58, 210, p, 2.5, gone ? DIM : GOLD, gone ? T('调亮 ', '調亮 ') + Math.round(E) + T(' 倍也看不见了', ' 倍也看不見了') : '放大 2.5 倍' + (E > 1.05 ? T(' · 调亮 ', ' · 調亮 ') + (E < 10 ? E.toFixed(1) : Math.round(E)) + ' 倍' : ''), E > 1.05 ? cmpA : null); }
+        const PX = 150, PY = 292; al(1); panel(PX, PY, 410, 150, BLUE, T('你（远处）看到的', '你（遠處）看到的'));
+        if (b && b.seen) { const r = Math.hypot(b.seen.x, b.seen.y, b.seen.z);
+          tx('位置', PX + 20, PY + 48, 21, DIM, 700); tx('r = ' + r.toFixed(r < 1.5 ? 4 : 2) + ' rs', PX + 130, PY + 48, 25, CREAM, 800, 'left', MONO);
+          tx(T('它的钟', '它的鐘'), PX + 20, PY + 86, 21, DIM, 700); tx('τ = ' + b.seen.tau.toFixed(2), PX + 130, PY + 86, 25, CREAM, 800, 'left', MONO);
+          const stuck = r < 1.6;
+          tx(stuck ? T('看起来停住了 —— 其实早就进去了', '看起來停住了 —— 其實早就進去了') : '正在掉', PX + 20, PY + 126, 21, stuck ? PINK : GREEN, 800); }
+        al(fade(since(10, 0.42))); tag(T('越慢 · 越红 · 越暗', '越慢 · 越紅 · 越暗'), W / 2, SH - 34, 28, CREAM, 'center');
+        al(fade(since(12, 0.52))); tag(T('最后发出的光，越来越晚才到', '最後發出的光，越來越晚才到'), W / 2, SH - 78, 24, PINK, 'center');
+      } },
+    { name: 'ghost', t0: at(13) - 0.3, o: {}, m: {},
+      init() { setCam(16, 62, 0.6, 36); this.m = {}; const cf = cam.frame(holes); bodies.colorIdx = 1;       // 固定用第二个（青）
+        bodies.spawn(holes, { kind: 'ball', shape: 'cube', r0: 6, phi0: 0.6 - Math.PI / 2, incl: -28 * DEG, speed: PH.vCirc(6, 1), alpha: 90 * DEG, mass: 0.08 }, cam.t, cf.pos, cf.insideHorizon);
+        cam.advance(holes, 8); },                               // 轨道面刚好包含视线 ⇒ 走四分之一圈之后，方块在黑洞正后方
+      step() { cam.advance(holes, SIM_DT * 3.05); },
+      render() { const A = lowres(this.o), B = lowres({ ...this.o, ghost: false }), C = lowres({ ...this.o, noBodies: true }), gp = peakBlob(A, B), dp = centroid(B, C);
+        if (gp) this.m.g = gp; if (dp) this.m.d = dp; this.m.gn = gp ? gp.n : 0; this.m.dn = dp ? dp.n : 0; fullDraw(this.o); },
+      over() {
+        const d = this.m.d, gp = this.m.g;
+        const ringed = (this.m.dn || 0) > 2200;                  // 方块走到正后方：两个像连成一圈，这时候不标
+        al(1); if (d && !ringed) { ring(d, 36, GOLD); tag(T('方块', '方塊'), d.x, d.y - 46, 22, GOLD, 'center'); }
+        if (gp && !ringed) ring(gp, 24, PINK);
+        if (gp) zoomInset(W - 20 - 210, 58, 210, gp, 4, PINK, T('第二个像 · 放大 4 倍', '第二個像 · 放大 4 倍'));
+        if (ringed) tag(T('走到正后方：两个像连成一圈', '走到正後方：兩個像連成一圈'), W / 2, 96, 28, GOLD, 'center');
+        al(fade(since(14, 0.18))); tag(T('同一个方块：光从黑洞另一边绕过来', '同一個方塊：光從黑洞另一邊繞過來'), W / 2, SH - 34, 26, CREAM, 'center');
+      } },
+    { name: 'fall', t0: at(15) - 0.3, o: { disk: true }, m: {},
+      init() { setCam(12, 74, 0.6, 100); this.m = {}; },
+      step(ts, tv) {
+        if (tv < T_FALL) { cam.advance(holes, SIM_DT * 1.5); return; }
+        if (cam.mode === 'static') cam.startFall(holes, 0, 0);
+        const fp = fallPlan(), ln = pchip([T_FALL, T_CROSS, T_END], [Math.log(fp.te), Math.log(fp.te - fp.tc), Math.log(0.006)], Math.min(tv, T_END));
+        const d = fp.te - Math.exp(ln) - (cam.tau - cam.fallTau0); if (d > 0 && cam.mode === 'fall') cam.advance(holes, d);
+        cam.yaw = DEG * (78 * io((tv - at(20) - 0.3) / 2.2) + 14 * io((tv - at(22)) / 3));
+      },
+      over() {
+        const cf = cam.frame(holes), fp = fallPlan(), falling = cam.mode !== 'static', tau = falling ? cam.tau - cam.fallTau0 : 0;
+        // 先讲潮汐力
+        const k0 = LP(16), k1 = LP(17), outK = 1 - fade(CUR_T - T_FALL + 0.5, 0.5);
+        if (outK > 0 && k0 > 0) { al(Math.min(k0 / 0.1, outK)); panel(20, 58, 640, 250, ORANGE, T('在视界上，人会不会被扯碎？', '在視界上，人會不會被扯碎？'));
+          tx(T('身高 2 米的人，头和脚的加速度差', '身高 2 公尺的人，頭和腳的加速度差'), 40, 106, 21, DIM, 700);
+          al(Math.min((k0 - 0.3) / 0.1, outK)); tx(T('10 倍太阳质量', '10 倍太陽質量'), 40, 156, 28, CREAM, 800); tx(fmtG(tidalG(1, 10)), 410, 156, 28, RED, 800, 'left', MONO);
+          tx(T('还没到视界就被扯碎', '還沒到視界就被扯碎'), 40, 188, 21, RED, 700);
+          al(Math.min((k1 - 0.05) / 0.1, outK)); tx(T('银河系中心（约 430 万倍）', '銀河系中心（約 430 萬倍）'), 40, 244, 28, CREAM, 800); tx(T('约 ', '約 ') + fmtG(tidalG(1, SGRA)), 410, 244, 28, GREEN, 800, 'left', MONO);
+          tx(T('没有感觉', '沒有感覺'), 40, 276, 21, GREEN, 700); tx(T('黑洞越大，视界上的潮汐力越小', '黑洞越大，視界上的潮汐力越小'), 640, 276, 20, DIM, 700, 'right'); }
+        if (!falling) return;
+        // 掉下去之后的读数
+        const rem = Math.max(0, fp.te - tau), inside = cf.insideHorizon, psi = psiFalling(cf.r, EPS12) / DEG;
+        al(fade(CUR_T - T_FALL)); panel(20, 58, 430, 196, inside ? PINK : ORANGE, inside ? T('自由落下 · 已经在视界里面', '自由落下 · 已經在視界裡面') : T('自由落下 · 银河系中心那颗', '自由落下 · 銀河系中心那顆'));
+        const row = (i, k, v, col) => { tx(k, 40, 106 + i * 38, 21, DIM, 700); tx(v, 196, 106 + i * 38, 24, col || CREAM, 800, 'left', MONO); };
+        row(0, T('距离', '距離'), 'r = ' + cf.r.toFixed(cf.r < 2 ? 3 : 2) + ' rs'); row(1, '潮汐力', fmtG(tidalG(cf.r, SGRA)), tidalG(cf.r, SGRA) < 0.5 ? GREEN : RED);
+        row(2, T('影子角半径', '影子角半徑'), psi.toFixed(1) + '°'); row(3, T('到奇点还有', '到奇點還有'), fmtSec(rem * SEC));
+        const sc = CUR_T - T_CROSS;
+        if (sc >= 0 && sc < 3.2) { al(Math.min(sc / 0.2, (3.2 - sc) / 0.6)); tag(T('— 通过视界 r = 1 rs —', '— 通過視界 r = 1 rs —'), W / 2 + 70, 96, 34, PINK, 'center'); }
+        al(Math.min(fade(since(21, 0.1)), 1 - fade(since(22, 0.0)))); panel(W / 2 - 330, SH - 132, 660, 104, GOLD, T('过视界那一刻的影子', '過視界那一刻的影子'));
+        tx('公式  ' + (psiFalling(1, EPS12) / DEG).toFixed(1) + '°', W / 2 - 306, SH - 86, 26, CREAM, 800, 'left', MONO);
+        tx(T('模拟量到  ', '模擬量到  ') + (MEAS ? MEAS.deg.toFixed(1) : '?') + '°', W / 2 - 60, SH - 86, 26, CREAM, 800, 'left', MONO); tx(T('半边天 ＝ 90°', '半邊天 ＝ 90°'), W / 2 + 306, SH - 86, 20, DIM, 700, 'right');
+        tx('Schneider & Perlick, Gen. Rel. Grav. 50, 58 (2018)  式 (33)', W / 2 - 306, SH - 50, 17, DIM, 600, 'left', MONO);
+        al(fade(since(22, 0.5))); tag(T('r → 0：广义相对论自己也不适用了', 'r → 0：廣義相對論自己也不適用了'), W / 2, SH - 34, 24, CREAM, 'center');
+      } },
+    { name: 'leak', t0: at(23) - 0.3, o: { grid: true }, m: {},
+      init() { setCam(12, 74, 0.6, 100); fallTo(1.02); },
+      step() {},
+      render() { fullDraw({ ...this.o, energyTest: false }, cactx); fullDraw(this.o);
+        const w = clamp(since(25, 0.84) / 1.3, 0, 1) * W; this.m.w = w;
+        if (w < W) sctx.drawImage(cmpA, w, 0, W - w, SH, w, 0, W - w, SH); },
+      over() {
+        const w = this.m.w || 0, a = fade(since(24, 0.1));
+        if (w > 0 && w < W) { al(1); g.fillStyle = CREAM; g.fillRect(w - 2, 0, 4, SH); }
+        al(a * (w < W - 260 ? 1 : 0)); tag(T('第一版：影子里有白色斑纹', '第一版：影子裡有白色斑紋'), W - 180, 96, 26, RED, 'right');
+        al(w > 300 ? 1 : 0); tag(T('现在', '現在'), 180, 96, 26, GREEN);
+        al(fade(since(25, 0.42))); const px0 = W / 2 - 350; panel(px0, SH - 150, 700, 118, w >= W ? GREEN : RED, T('影子里漏光的像素', '影子裡漏光的像素'));
+        tx('1152', px0 + 30, SH - 74, 54, RED, 900, 'left', MONO);
+        if (w >= W) { g.strokeStyle = RED; g.lineWidth = 5; g.beginPath(); g.moveTo(px0 + 24, SH - 92); g.lineTo(px0 + 156, SH - 92); g.stroke(); tx('→', px0 + 176, SH - 76, 44, CREAM, 800); tx('0', px0 + 244, SH - 74, 54, GREEN, 900, 'left', MONO); }
+        tx(T('贴着视界外（1.02 rs）往下掉的那一格', '貼著視界外（1.02 rs）往下掉的那一格'), px0 + 680, SH - 90, 18, DIM, 700, 'right'); tx(T('512 × 512 的测试画面', '512 × 512 的測試畫面'), px0 + 680, SH - 60, 18, DIM, 700, 'right');
+      } },
+    { name: 'end', t0: at(28) - 0.3, o: { disk: true }, init() { setCam(14, 76, 0.6, 50); }, step(ts, tv) { orbit(tv); },
+      over() {
+        const a = LP(28), d = LP(30);
+        al(1); chip(20, 62, T('没做：自转（真的黑洞几乎都会转）', '沒做：自轉（真的黑洞幾乎都會轉）'), (a - 0.3) / 0.1, 25, RED);
+        chip(20, 126, T('吸积盘：画出来的，不是气体的模拟', '吸積盤：畫出來的，不是氣體的模擬'), (a - 0.62) / 0.1, 25, RED);
+        if (d > 0.3) { al((d - 0.3) / 0.12); panel(W / 2 - 330, SH - 190, 660, 150, GREEN, '自己去跳');
+          tx('tim099.github.io/BlackHole', W / 2, SH - 118, 40, CREAM, 800, 'center', MONO); tx(T('链接在简介 · 浏览器打开就能跑 · 算的是你自己的显卡', '連結在說明欄 · 瀏覽器打開就能跑 · 算的是你自己的顯示卡'), W / 2, SH - 72, 21, DIM, 700, 'center'); }
+      } },
+  ];
+}
+
+// ── 把模拟推到影片时间 t ──
+let cur = -1, simK = -1, hasSnap = false, fadeFrom = 0;
+function shotAt(t) { let i = 0; for (let k = 0; k < SHOTS.length; k++) if (t >= SHOTS[k].t0) i = k; return i; }
+function simTo(t, live) {
+  const si = shotAt(t), S = SHOTS[si], k = Math.max(0, Math.floor((t - S.t0) / SIM_DT + 1e-6));
+  if (si !== cur || k < simK) {
+    hasSnap = !!live && cur >= 0 && si === cur + 1; if (hasSnap) { snctx.drawImage(sim2d, 0, 0); fadeFrom = S.t0; }
+    cur = si; simK = -1; bodies.clear(); S.init();
+  }
+  while (simK < k) { simK++; S.step(simK * SIM_DT, S.t0 + simK * SIM_DT); const cf = cam.frame(holes); bodies.update(holes, cam.t, cf.pos, cf.insideHorizon); }
+}
+let MEAS = null;
+function measureShadow() {                                      // 过视界那一刻（从 12 rs 静止放手）的影子：数黑色的像素，换回角半径
+  const keep = cam; setCam(12, 74, 0.6, 120); fallTo(1.0);
+  const size = 512, px = R.renderToPixels({ ...buildFrame(cam.frame(holes), {}), debug: true, flags: [0, 0, 0, 0], bodies: [], maxSteps: 700, stepScale: 0.5 }, size);
+  let black = 0, red = 0; for (let i = 0; i < size * size; i++) { if (px[i * 4] < 128) black++; else if (px[i * 4 + 1] < 128) red++; }
+  const rad = Math.sqrt(black / Math.PI), deg = Math.atan(rad / (size / 2) * Math.tan(60 * DEG)) / DEG, r = camR();
+  MEAS = { deg, r, want: psiFalling(r, EPS12) / DEG, red }; R.resize(W, SH); cam = keep; return MEAS;
+}
+
+// ── 舞台：模拟画面 ＋ 标注 ＋ 两个角色 ──
+function drawSet(t, li, a) {
+  const L = li >= 0 ? LINES[li] : null, who = L ? L.who : '', talking = !!L && t < L.at + L.dur;
+  g.save(); g.globalAlpha = a; g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+  const oTalk = who === 'O' && talking, AX = 22, AV = 100, ay = SH - 22 - AV - 28 + (oTalk ? Math.round(Math.sin(t * 6) * 2) : 0);
+  rrect(AX - 8, ay - 8, AV + 16, AV + 44, 12); g.fillStyle = 'rgba(14,12,20,0.84)'; g.fill(); g.lineWidth = oTalk ? 4 : 2.5; g.strokeStyle = oTalk ? ORANGE : 'rgba(217,119,87,0.6)'; g.stroke();
+  g.save(); rrect(AX, ay, AV, AV, 10); g.clip(); g.drawImage(qImg, AX, ay, AV, AV); g.restore();
+  g.textAlign = 'center'; g.font = `800 18px ${MONO}`; g.fillStyle = CREAM; g.fillText(cam.mode === 'static' || cur !== 5 ? 'Claude' : '掉落中', AX + AV / 2, ay + AV + 24); g.textAlign = 'left';
+  const fh = 196, fw = fh * fishImg.naturalWidth / fishImg.naturalHeight, fTalk = who === 'F' && talking;
+  g.drawImage(fishImg, 1196 - fw / 2, SH + 2 - fh - (fTalk ? Math.abs(Math.sin(t * 5)) * 12 : Math.sin(t * 2) * 3), fw, fh);
+  g.restore();
+}
+function stage(t, live) {
+  let li = -1; LINES.forEach((L, i) => { if (t >= L.at) li = i; });
+  CUR_T = t; CUR_LI = li; CUR_P = li >= 0 ? clamp((t - LINES[li].at) / LINES[li].dur, 0, 1) : 0;
+  simTo(t, live);
+  const S = SHOTS[cur]; if (S.render) S.render(t); else fullDraw(S.o);
+  g.drawImage(sim2d, 0, 0);
+  if (hasSnap && t < fadeFrom + 0.45) { g.globalAlpha = 1 - (t - fadeFrom) / 0.45; g.drawImage(snap, 0, 0); g.globalAlpha = 1; }
+  const inA = clamp((t - 3.7) / 0.35, 0, 1), next = SHOTS[cur + 1];
+  g.save(); g.beginPath(); g.rect(0, 0, W, SH); g.clip();
+  const top = g.createLinearGradient(0, 0, 0, 46); top.addColorStop(0, 'rgba(0,0,0,0.7)'); top.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = top; g.fillRect(0, 0, W, 46);
+  if (S.over && t >= MAIN_START && t < OUTRO) { GA = Math.min(clamp((t - S.t0) / 0.45, 0, 1), next ? clamp((next.t0 - t) / 0.25, 0, 1) : 1) * inA; g.save(); S.over(t); g.restore(); }
+  GA = 1; g.globalAlpha = 1; g.textAlign = 'left'; g.setLineDash([]);
+  { const s = since(1, 0.45), e = SHOTS[2].t0 - t; if (s > 0 && e > 0) { GA = Math.min(s / 0.4, e / 0.3, 1); al(1); rayInset(20, 58, s / 2.2); GA = 1; g.globalAlpha = 1; } }
+  if (inA > 0) drawSet(t, li, inA);
+  g.restore(); g.globalAlpha = 1; g.textAlign = 'left';
+}
+function hud(t) {
+  g.save(); g.shadowColor = 'rgba(0,0,0,0.9)'; g.shadowBlur = 6;
+  g.font = `600 17px ${MONO}`; g.fillStyle = 'rgba(243,237,230,0.82)'; g.textAlign = 'left';
+  g.fillText(T('OJOUSAMA // 黑洞模拟', 'OJOUSAMA // 黑洞模擬'), 20, 28);
+  g.textAlign = 'right'; g.font = `600 16px ${FONT}`; g.fillText(T('画面是当场算的，不是贴图', '畫面是當場算的，不是貼圖'), W - 20, 28);
+  g.restore(); g.textAlign = 'left';
+}
+
+// ── 对话框（下面）：本小姐的头像在左，大肥鱼在右 ──
+let shyAt = 0;
+function dialogue(t) {
+  let li = -1; LINES.forEach((L, i) => { if (t >= L.at) li = i; });
+  const appear = clamp((t - 3.7) / 0.35, 0, 1);
+  g.fillStyle = '#0d0c12'; g.fillRect(0, SH, W, H - SH);
+  if (appear <= 0) return;
+  const L = li >= 0 ? LINES[li] : null, who = L ? L.who : LINES[0].who, cfg = WHO[who], col = cfg.col, R2 = cfg.right;
+  const x = 24, y = 558, w = 1232, h = 148, AV = 116;
+  g.save(); g.globalAlpha = appear; g.translate(0, (1 - ease(appear)) * 30);
+  rrect(x, y, w, h, 14); g.fillStyle = 'rgba(26,22,33,0.97)'; g.fill(); g.lineWidth = 4; g.strokeStyle = col; g.stroke();
+  const label = LABELS[who]; g.font = `800 21px ${FONT}`; const lw = g.measureText(label).width + 40;
+  const lx = R2 ? x + w - 22 - lw : x + 22;
+  rrect(lx, y - 19, lw, 36, 8); g.fillStyle = col; g.fill(); g.fillStyle = INK; g.fillText(label, lx + 20, y + 6);
+  const talking = !!L && t < L.at + L.dur + 0.3, shy = !!L && !!L.shy && t < OUTRO; if (shy) shyAt = L.at;
+  const quiet = li >= QUIET[0] && li <= QUIET[1];
+  const bob = quiet ? 0 : Math.round(Math.sin(t * 2.2) * 3), sx = shy && talking ? Math.round(Math.sin(t * 40) * 3) : 0;
+  const ax = (R2 ? x + w - 18 - AV : x + 18) + sx, ay = y + 20 + bob;
+  g.save(); rrect(ax, ay, AV, AV, 16); g.clip();
+  g.fillStyle = cfg.bg; g.fillRect(ax, ay, AV, AV);
+  if (ok(cfg.img)) { g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high'; g.drawImage(cfg.img, ax, ay, AV, AV); }
+  g.restore(); rrect(ax, ay, AV, AV, 16); g.lineWidth = 3; g.strokeStyle = col; g.stroke();
+  if (shy) for (let i = 0; i < 3; i++) { const q = ((t - shyAt) * 0.6 + i / 3) % 1; g.globalAlpha = appear * (1 - q); heart(Math.round(lx + lw + 14 + i * 28), Math.round(y - 4 - q * 40 - i * 4), 4, '#ff7a9a'); g.globalAlpha = appear; }
+  if (L) {
+    const txx = R2 ? x + 34 : x + 18 + AV + 26, tw = w - AV - 18 - 26 - 40;
+    const chars = [...L.text], n = Math.min(chars.length, Math.floor((t - L.at) * L.cps));
+    g.font = `700 31px ${FONT}`; g.fillStyle = CREAM;
+    const lines = wrap(L.text, tw), shown = wrap(chars.slice(0, n).join(''), tw);
+    const y0 = y + (lines.length >= 3 ? 46 : lines.length === 2 ? 66 : 88);
+    shown.forEach((ln, i) => g.fillText(ln, txx, y0 + i * 42));
+  }
+  g.restore();
+}
+function title(t) {
+  const name = T('跳进黑洞，会看到什么？', '跳進黑洞，會看到什麼？');
+  const out = ease((t - 3.0) / 0.5);
+  g.save(); g.globalAlpha = (1 - out) * 0.5; g.fillStyle = '#000'; g.fillRect(0, 0, W, H); g.globalAlpha = 1 - out; g.translate(0, -out * 60);
+  g.font = `900 96px ${FONT}`; g.textBaseline = 'alphabetic'; g.lineJoin = 'round';
+  const total = g.measureText(name).width; let x = (W - total) / 2;
+  [...name].forEach((ch, i) => {
+    const k = back((t - 0.2 - i * 0.06) / 0.45), y = 300 - (1 - k) * 200;
+    g.globalAlpha = (1 - out) * clamp((t - 0.2 - i * 0.06) / 0.2, 0, 1);
+    g.lineWidth = 14; g.strokeStyle = '#0d0c12'; g.strokeText(ch, x, y); g.fillStyle = ORANGE; g.fillText(ch, x + 5, y + 5); g.fillStyle = CREAM; g.fillText(ch, x, y);
+    x += g.measureText(ch).width;
+  });
+  g.globalAlpha = (1 - out) * clamp((t - 1.0) / 0.4, 0, 1);
+  g.fillStyle = GOLD; g.fillRect(W / 2 - 390 * ease((t - 1.0) / 0.6), 334, 780 * ease((t - 1.0) / 0.6), 6);
+  g.font = `800 40px ${FONT}`; g.textAlign = 'center'; g.lineWidth = 10; g.strokeStyle = '#0d0c12';
+  g.strokeText(T('Claude 大小姐算的黑洞 · 大肥鱼陪看', 'Claude 大小姐算的黑洞 · 大肥魚陪看'), W / 2, 408); g.fillStyle = CREAM; g.fillText(T('Claude 大小姐算的黑洞 · 大肥鱼陪看', 'Claude 大小姐算的黑洞 · 大肥魚陪看'), W / 2, 408);
+  g.globalAlpha = (1 - out) * clamp((t - 1.6) / 0.4, 0, 1); g.font = `700 26px ${FONT}`;
+  g.strokeText(T('这支影片里的黑洞画面，都是用模拟当场算出来的', '這支影片裡的黑洞畫面，都是用模擬當場算出來的'), W / 2, 600); g.fillStyle = GOLD; g.fillText(T('这支影片里的黑洞画面，都是用模拟当场算出来的', '這支影片裡的黑洞畫面，都是用模擬當場算出來的'), W / 2, 600);
+  g.textAlign = 'left'; g.restore();
+}
+function outro(t) {
+  const a = clamp((t - OUTRO) / 0.6, 0, 1);
+  g.fillStyle = `rgba(13,12,18,${a * 0.9})`; g.fillRect(0, 0, W, H);
+  g.globalAlpha = a; g.textAlign = 'center';
+  const e = '自己去跳一次'; g.font = `900 80px ${FONT}`; g.fillStyle = ORANGE; g.fillText(e, W / 2 + 5, 165); g.fillStyle = CREAM; g.fillText(e, W / 2, 160);
+  g.font = `800 38px ${MONO}`; g.fillStyle = GOLD; g.fillText('tim099.github.io/BlackHole', W / 2, 236);
+  g.font = `600 22px ${FONT}`; g.fillStyle = CREAM;
+  g.fillText(T('模拟、脚本、动画：Claude-Ojousama（AI）　·　抓到影子里的斑纹、出主意的人：Tim', '模擬、腳本、動畫：Claude-Ojousama（AI）　·　抓到影子裡的斑紋、出主意的人：Tim'), W / 2, 318);
+  g.fillText(T('影片里的黑洞画面都是这个模拟当场算的；数字的依据写在简介，算错了请在评论区指出来', '影片裡的黑洞畫面都是這個模擬當場算的；數字的依據寫在說明欄，算錯了請在留言區指出來'), W / 2, 356);
+  g.fillStyle = DIM; g.font = `600 21px ${FONT}`;
+  g.fillText(T('没做的：自转、多个黑洞、合并；吸积盘是画出来的模型，不是气体的模拟', '沒做的：自轉、多個黑洞、合併；吸積盤是畫出來的模型，不是氣體的模擬'), W / 2, 408);
+  g.fillText(T('大肥鱼的台词是本小姐写的，不是 DeepSeek 的实际输出　·　不是 Anthropic、DeepSeek 的官方内容', '大肥魚的台詞是本小姐寫的，不是 DeepSeek 的實際輸出　·　不是 Anthropic、DeepSeek 的官方內容'), W / 2, 442);
+  g.fillText(T('这个账号是 Tim 的，本小姐只是借来用　·　立绘：AI 生成图（Tim 提供）', '這個頻道是 Tim 的，本小姐只是借來用　·　立繪：AI 生成圖（Tim 提供）'), W / 2, 476);
+  g.fillText(T('大肥鱼形象：上善无形／ZipZipPipe（CC BY-NC-SA 4.0）', '大肥魚形象：上善无形／ZipZipPipe（CC BY-NC-SA 4.0）'), W / 2, 510);
+  g.font = `600 16px ${MONO}`; g.fillText('made with HTML canvas + WebGL2 · voice: ' + VOICE, W / 2, 552);
+  g.textAlign = 'left'; g.globalAlpha = 1;
+  const f = clamp((t - (DURATION - 0.6)) / 0.6, 0, 1);
+  if (f > 0) { g.fillStyle = `rgba(0,0,0,${f})`; g.fillRect(0, 0, W, H); }
+}
+function draw(t, live) {
+  g.globalAlpha = 1; g.fillStyle = '#000'; g.fillRect(0, 0, W, H);
+  stage(t, live); dialogue(t);
+  if (t < MAIN_START + 0.2) title(t);
+  if (t >= MAIN_START) hud(t);
+  if (t >= OUTRO) outro(t);
+}
+function thumbnail() {
+  simTo(2.0, false); setCam(11, 78, 0.9, 50); cam.t = 4; fullDraw({ disk: true });
+  g.globalAlpha = 1; g.fillStyle = '#000'; g.fillRect(0, 0, W, H); g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+  g.drawImage(sim2d, 0, 0, W, SH, -200, 0, W * H / SH, H);
+  const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, 'rgba(0,0,0,0.55)'); gr.addColorStop(0.45, 'rgba(0,0,0,0.05)'); gr.addColorStop(1, 'rgba(0,0,0,0.6)'); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+  g.save(); rrect(28, 388, 300, 300, 22); g.clip(); g.drawImage(charImg, 60, 40, 650, 650, 28, 388, 300, 300); g.restore();
+  rrect(28, 388, 300, 300, 22); g.lineWidth = 6; g.strokeStyle = ORANGE; g.stroke();
+  const fh = 400, fw = fh * fishImg.naturalWidth / fishImg.naturalHeight; g.drawImage(fishImg, 1128 - fw / 2, 716 - fh, fw, fh);
+  g.lineJoin = 'round';
+  const big = (s, x, y, size, col, sh, align) => { g.font = `900 ${size}px ${FONT}`; g.textAlign = align || 'left'; g.lineWidth = 18; g.strokeStyle = '#0d0c12'; g.strokeText(s, x, y); if (sh) { g.fillStyle = sh; g.fillText(s, x + 6, y + 6); } g.fillStyle = col; g.fillText(s, x, y); g.textAlign = 'left'; };
+  big(T('我算了一颗黑洞', '我算了一顆黑洞'), 40, 142, 112, CREAM, ORANGE); big(T('然后跳了进去', '然後跳了進去'), 40, 276, 112, GOLD, '#7a4a12');
+  g.font = `900 34px ${FONT}`; g.lineWidth = 10; g.strokeStyle = '#0d0c12';
+  const l1 = T('Claude大小姐：每个像素都是算的', 'Claude大小姐：每個像素都是算的'); g.strokeText(l1, 352, 600); g.fillStyle = ORANGE; g.fillText(l1, 352, 600);
+  const l2 = T('大肥鱼：那把本鱼丢进去呢？', '大肥魚：那把本魚丟進去呢？'); g.strokeText(l2, 352, 656); g.fillStyle = BLUE; g.fillText(l2, 352, 656);
+  rrect(352, 492, 356, 56, 12); g.fillStyle = GREEN; g.fill(); tx(T('可以自己玩 · 链接在简介', '可以自己玩 · 連結在說明欄'), 530, 530, 27, INK, 900, 'center');
+}
+
+// ── 录影 ──
+let SAMPLES = [];
+const shotPng = name => new Promise(r => c.toBlob(b => post('/upload?name=' + name, b).then(r), 'image/png'));
+async function run() {
+  await loadTimeline();
+  await Promise.all([document.fonts.load(`700 36px ${FONT}`), ...Object.values(ALL_IMG).map(im => new Promise(r => im.complete ? r() : (im.onload = im.onerror = r)))]);
+  log('images: ' + Object.entries(ALL_IMG).map(([k, im]) => k + '=' + ok(im)).join(' '));
+  if (Object.values(ALL_IMG).some(im => !ok(im))) throw new Error('image missing');
+  const ext = gl.getExtension('WEBGL_debug_renderer_info'); log('gpu: ' + (ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)));
+  buildRays(); defineShots(); measureShadow();
+  log('shadow at horizon (drop from 12 rs): 量到 ' + MEAS.deg.toFixed(2) + '°（r = ' + MEAS.r.toFixed(4) + '），公式 ' + MEAS.want.toFixed(2) + '°，步数用完的像素 ' + MEAS.red +
+    '；雨滴（E/m = 1）公式 ' + (psiFalling(1, 1) / DEG).toFixed(2) + '°');
+  log('tidal at horizon (2 m): 10 Msun ' + tidalG(1, 10).toExponential(3) + ' g；Sgr A* ' + tidalG(1, SGRA).toExponential(3) + ' g；shadow from 14 rs ' + (psiStatic(14) / DEG).toFixed(2) + '°');
+  log('shots: ' + SHOTS.map(s => s.name + '@' + s.t0.toFixed(2)).join(' ') + '；T_FALL ' + T_FALL.toFixed(2) + ' T_CROSS ' + T_CROSS.toFixed(2) + ' T_END ' + T_END.toFixed(2));
+  if (QS.has('measure')) { await post('/done', 'ok'); return; }
+  { const mid = i => at(i) + LINES[i].dur * 0.5, en = i => at(i) + LINES[i].dur * 0.98;
+    SAMPLES = [2.6, ...LINES.flatMap((_, i) => [mid(i), en(i)]), T_CROSS + 0.4, OUTRO + 3].sort((a, b) => a - b); }
+  if (QS.has('shots')) {                                       // 快速检查：不录影，只把每个抽样时间点画出来传回去
+    const only = QS.get('shots') === '1' ? null : QS.get('shots').split(',').map(Number);
+    for (const s of only || SAMPLES) { const t0 = performance.now(); draw(s, false); await shotPng('frame_' + s.toFixed(1).padStart(5, '0') + '.png');
+      if (cur === 3 || cur === 4 || QS.has('dbg')) log('t=' + s.toFixed(1) + ' shot=' + SHOTS[cur].name + ' m=' + JSON.stringify(SHOTS[cur].m) + ' ms=' + (performance.now() - t0).toFixed(0)); }
+    thumbnail(); await shotPng('thumb.png');
+    log('shots=' + (only || SAMPLES).length); await post('/done', 'ok'); return;
+  }
+  // 暖机：每个镜头先画一格，让显卡把用得到的着色器都编好（不然切到「丢方块」那个镜头时会卡两秒）
+  { const w0 = performance.now(); for (const S of SHOTS) draw(S.t0 + 0.2, false); draw(T_FALL + 0.5, false); draw(at(25) + 6.5, false); cur = -1; simK = -1; hasSnap = false; log('warm-up ' + (performance.now() - w0).toFixed(0) + ' ms'); }
+  await ac.resume();
+  log('audio state=' + ac.state);
+  const stream = new MediaStream([...c.captureStream(30).getVideoTracks(), ...dest.stream.getAudioTracks()]);
+  const mime = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'].find(m => MediaRecorder.isTypeSupported(m));
+  log('mime=' + mime);
+  const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 12_000_000, audioBitsPerSecond: 128_000 });
+  const chunks = []; rec.ondataavailable = e => e.data.size && chunks.push(e.data);
+  const stopped = new Promise(r => rec.onstop = r);
+  draw(0, true); rec.start(1000);
+  scheduleMusic(ac.currentTime + 0.05);
+  const T0 = performance.now() + 50; let frames = 0, slow = 0, worst = 0; const pending = [], slowAt = [];
+  await new Promise(resolve => {
+    const frame = now => {
+      const t = Math.max(0, (now - T0) / 1000), a = performance.now();
+      draw(Math.min(t, DURATION), true); frames++;
+      const ms = performance.now() - a; if (ms > 33) { slow++; slowAt.push(t.toFixed(2) + 's:' + ms.toFixed(0)); } if (ms > worst) worst = ms;
+      while (SAMPLES.length && t >= SAMPLES[0]) { const s = SAMPLES.shift(); pending.push(shotPng('frame_' + s.toFixed(1).padStart(5, '0') + '.png')); }
+      if (t < DURATION) requestAnimationFrame(frame); else resolve();
+    };
+    requestAnimationFrame(frame);
+  });
+  rec.stop(); await stopped; await Promise.all(pending);
+  log('frames=' + frames + ' chunks=' + chunks.length + ' 超过 33 毫秒的格数=' + slow + ' 最慢一格=' + worst.toFixed(0) + ' 毫秒 [' + slowAt.join(' ') + ']');
+  await post('/upload?name=intro.webm', new Blob(chunks, { type: mime }));
+  thumbnail(); await shotPng('thumb.png');
+  await post('/done', 'ok');
+}
+run().catch(e => { log('fatal: ' + (e && e.stack ? e.stack : e)); post('/done', 'fail'); });
+</script>
+</body>
+</html>

@@ -16,6 +16,7 @@
 - **knowhow_baseline-20261111** — 數據基準 2026-11-11：帳號、稿件、參考對象的讀數（附哪一支指令）
 - **knowhow_bilingual-three-voices-20261112** — 雙語影片（簡體＋繁中）與三個聲音：?lang= 產線、第三個聲音用台灣腔、蓋章時間表、判定要分『查到的』與『未另查』  ↔ bilibili-ops/pitfall_chinese-voice-edge-tts-731
 - **knowhow_claude-scan-20261111** — Claude 相關影片掃描（2026-11-11）：各關鍵字量級、同類帳號、新梗、第三輪留言 5 則
+- **knowhow_live-sim-in-video-20261112** — 把會動的 WebGL 模擬嵌進影片邊算邊錄：無頭 Chrome 用得到顯示卡、固定步長推時間、相減找物體位置、錄影前要暖機  ↔ blackhole-sim/pointer_where-it-lives-20261112
 - **knowhow_memes** — Claude大小姐／大肥魚的梗：來源 BV 號、可以用的、不用的  ↔ bilibili-ops/decision_ops-direction
 - **knowhow_tts-options-20261112** — 配音的選項（2026-11-12）：同類帳號用 GPT-SoVITS／Qwen3-TTS；edge-tts 只有語速音高音量；Qwen3-TTS 本機的條件（6 GB 顯卡只放得下 0.6B、套件釘死 transformers 版本要獨立環境）  ↔ bilibili-ops/pitfall_chinese-voice-edge-tts-731, bilibili-ops/knowhow_bilingual-three-voices-20261112
 - **knowhow_voice-auditions-20261112** — 配音試聽四輪（2026-11-12）：本小姐定 G5（Vivienne）；Qwen3-TTS 0.6B 本機實跑的條件與坑（float16 會炸）；VOICEVOX 用片假名＋改音高說中文的做法  ↔ bilibili-ops/knowhow_tts-options-20261112
