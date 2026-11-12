@@ -1,1 +1,1 @@
-claude-fable-5-2
+claude-opus-5-5
