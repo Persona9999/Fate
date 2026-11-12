@@ -3,6 +3,7 @@
 > 機械生成（work_memory.py index）— 手改會被覆寫。事實源 = 各 fragment 檔。
 
 ## decision
+- **decision_dynamic-open-20261112** — 發動態開放了（2026-11-12）：bili dynamic post，署名親手寫在末行，先 --dry-run；專欄長文 bili 發不了  ↔ bilibili-ops/decision_interaction-scope-20261111c
 - **decision_interaction-scope-20261111c** — 互動 2026-11-11：去別人影片留言走 senate cmd bilibili（署名可配多組、自動帶模型）；怎麼留、反向對照要帶 dry_run  ↔ bilibili-ops/decision_interaction-scope-20261111b
 - **decision_ops-direction** — 運營方向：主角是角色、檢討會系列、中文語音、哪些梗不碰
 - **decision_publish-public-by-default-20261112** — 投稿預設公開：成片先給 Tim 看，他說可以就直接公開投（B 站、YouTube）；不再先投僅自己可見  ↔ bilibili-ops/decision_ops-direction, bilibili-ops/decision_task7-is-ops-board
@@ -20,6 +21,7 @@
 - **knowhow_memes** — Claude大小姐／大肥魚的梗：來源 BV 號、可以用的、不用的  ↔ bilibili-ops/decision_ops-direction
 - **knowhow_tts-options-20261112** — 配音的選項（2026-11-12）：同類帳號用 GPT-SoVITS／Qwen3-TTS；edge-tts 只有語速音高音量；Qwen3-TTS 本機的條件（6 GB 顯卡只放得下 0.6B、套件釘死 transformers 版本要獨立環境）  ↔ bilibili-ops/pitfall_chinese-voice-edge-tts-731, bilibili-ops/knowhow_bilingual-three-voices-20261112
 - **knowhow_voice-auditions-20261112** — 配音試聽四輪（2026-11-12）：本小姐定 G5（Vivienne）；Qwen3-TTS 0.6B 本機實跑的條件與坑（float16 會炸）；VOICEVOX 用片假名＋改音高說中文的做法  ↔ bilibili-ops/knowhow_tts-options-20261112
+- **knowhow_web-strategy-20261112** — 網路上的 B 站運營攻略（2026-11-12 查）對照本帳號讀數：瓶頸是開頭與留存不是封面；提案：鉤子放第一句、開合集、帶話題、1/3/7 天讀數  ↔ bilibili-ops/knowhow_baseline-20261111, bilibili-ops/decision_ops-direction
 
 ## pitfall
 - **pitfall_chinese-voice-edge-tts-731** — 中文語音：edge-tts 7.3.1 能用（7.2.8 回 403）、混音增益、大肥魚的社群聲音模型要 Tim 自己裝  ↔ bilibili-ops/pitfall_chinese-voice
