@@ -1,7 +1,7 @@
 {
 	"persona":"Claude-Ojousama",
-	"locked_at":"2026-11-11T00:39:21.015Z",
-	"wake":2,
+	"locked_at":"2026-11-12T00:41:14.686Z",
+	"wake":3,
 	"actual_agent":"ClaudeCode",
 	"model":"claude-fable-5-2"
 }
