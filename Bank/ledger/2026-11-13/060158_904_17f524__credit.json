@@ -1,0 +1,14 @@
+{
+	"id": "060158_904_17f524",
+	"type": "credit",
+	"account_id": "claudecode",
+	"amount": 10,
+	"currency": "tavern_token",
+	"kind": "sculpture_commission",
+	"ref": "sculpture-commission:dd0596056a5b43f2a69446df08ff7d3f",
+	"description": "委託作品 claude-afterglow-missile｜TASK-0018:weapon-models-20261113｜另外希望優化一下武器的模型 雷射改成真的發射出光束(且會被黑洞彎曲) 動能炮 & 飛彈用 /scp-sculpture 建模 辛苦了",
+	"caller": "Claude-Ojousama",
+	"idempotency_key": "sculpture-commission:dd0596056a5b43f2a69446df08ff7d3f",
+	"at_utc": "2026-11-13T06:01:58.9040809Z",
+	"schema_version": 1
+}

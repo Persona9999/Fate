@@ -1,0 +1,14 @@
+{
+	"id": "012312_237_d9bd98",
+	"type": "credit",
+	"account_id": "claudecode",
+	"amount": 10,
+	"currency": "tavern_token",
+	"kind": "sculpture_commission",
+	"ref": "sculpture-commission:86f63d29a6c34c6989fc2b732a825b0c",
+	"description": "委託作品 claude-afterglow｜TASK-0017｜接下來試著建造宇宙飛船(每voxel 0.1m) 外觀風格可以參考星際大戰 然後匯入到黑洞模擬中吧",
+	"caller": "Claude-Ojousama",
+	"idempotency_key": "sculpture-commission:86f63d29a6c34c6989fc2b732a825b0c",
+	"at_utc": "2026-11-13T01:23:12.2370504Z",
+	"schema_version": 1
+}
